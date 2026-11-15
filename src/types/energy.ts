@@ -59,5 +59,9 @@ export type Plan = {
   currentEstimate: number;
   projectedBill: number;
   totalCuts: number;
+  /** kWh per month the cuts save. */
+  kwhSaved: number;
+  /** kg of CO₂ per month the cuts avoid. */
+  co2SavedKg: number;
   cuts: PlanCut[];
 };

@@ -13,7 +13,7 @@ export const SAMPLE_APPLIANCES: Appliance[] = [
     daysPerWeek: 7,
     note: 'Continuous duty',
   },
-  { id: 'tv', name: '50" Smart TV', category: 'flexible', watts: 100, hoursPerDay: 5, daysPerWeek: 7, note: 'Living room' },
+  { id: 'tv', name: '50" Smart TV', category: 'flexible', watts: 100, hoursPerDay: 5, daysPerWeek: 7, minHoursPerDay: 2, note: 'Living room' },
   { id: 'stand-fan', name: 'Stand Fan', category: 'essential', watts: 60, hoursPerDay: 14, daysPerWeek: 7, note: 'Living Area' },
   {
     id: 'rice-cooker',
@@ -31,6 +31,7 @@ export const SAMPLE_APPLIANCES: Appliance[] = [
     watts: 450,
     hoursPerDay: 2,
     daysPerWeek: 3,
+    minHoursPerDay: 1,
     note: 'Tue / Thu / Sat',
   },
 ];

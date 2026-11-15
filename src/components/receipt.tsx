@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Line, Polygon } from 'react-native-svg';
 
 import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import type { PlanStatus } from '@/types/energy';
 import { formatPeso, formatPesoCut } from '@/utils/format';
 
 export type ReceiptCategory = 'essential' | 'flexible' | 'luxury';
@@ -22,6 +23,8 @@ export type ReceiptLineItem = {
 export type ReceiptProps = {
   /** Recommended cuts, in display order. */
   items: ReceiptLineItem[];
+  /** Drives the stamp under the header. */
+  status: PlanStatus;
   projectedBill: number;
   currentEstimate: number;
   target: number;
@@ -41,6 +44,11 @@ const CATEGORY_CHIP: Record<ReceiptCategory, { label: string; background: string
   flexible: { label: 'FLX', background: colors.secondaryFixed, color: colors.onSecondaryFixedVariant },
 };
 
+const STAMP: Record<PlanStatus, { label: string; color: string }> = {
+  feasible: { label: 'TARGET FEASIBLE', color: colors.tertiary },
+  'not-reachable': { label: 'TARGET NOT REACHABLE', color: colors.alert },
+};
+
 const TOOTH_WIDTH = 6;
 const TOOTH_DEPTH = 4;
 const BARCODE_BARS = [4, 2, 6, 2, 8, 2, 4, 8, 2, 4, 2, 8, 4, 2, 6, 2, 4, 8];
@@ -48,6 +56,7 @@ const LEADER = '. . . . . .';
 
 export function Receipt({
   items,
+  status,
   projectedBill,
   currentEstimate,
   target,
@@ -56,6 +65,7 @@ export function Receipt({
   termId,
   barcodeNumber,
 }: ReceiptProps) {
+  const stamp = STAMP[status];
   return (
     <View style={styles.wrapper}>
       <View style={styles.paper}>
@@ -66,8 +76,8 @@ export function Receipt({
         </View>
 
         <View style={styles.stampRow}>
-          <View style={styles.stamp}>
-            <Text style={styles.stampText}>TARGET FEASIBLE</Text>
+          <View style={[styles.stamp, { borderColor: stamp.color }]}>
+            <Text style={[styles.stampText, { color: stamp.color }]}>{stamp.label}</Text>
           </View>
         </View>
 

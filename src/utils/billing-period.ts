@@ -18,6 +18,13 @@ export function formatPeriod(startIso: string, endIso: string): string {
   return `${MONTHS[start.month - 1]} ${start.day} – ${MONTHS[end.month - 1]} ${end.day}`;
 }
 
+/** "2024-10-31" -> "OCT 2024". Empty when the date is invalid. */
+export function formatMonthYear(iso: string): string {
+  const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(iso);
+  if (!match) return '';
+  return `${MONTHS[Number(match[2]) - 1].toUpperCase()} ${match[1]}`;
+}
+
 /** Which day of the billing period `today` is, counting the first day as 1 and clamped to the period. */
 export function billingDay(startIso: string, endIso: string, today: Date = new Date()): number | null {
   const start = parseIso(startIso);
