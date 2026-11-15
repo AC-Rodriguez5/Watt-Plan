@@ -12,7 +12,27 @@ export type PlanRevision = {
   constraintsBefore: PlanConstraints;
   /** Appliances the user asked to leave alone, shown as "untouched" lines. */
   keptApplianceIds: string[];
+  /** Target before this change, restored by Undo. Absent when the change did not touch the target. */
+  targetBefore?: number | null;
+  /** Minimum hours before this change, restored by Undo. Absent when the change did not touch them. */
+  minHoursBefore?: { applianceId: string; hours: number | undefined };
 };
+
+/**
+ * What the AI understood from a chat message, after validation (src/ai/interpret.ts). The only
+ * numbers it can carry are the ones the user asked for: a new monthly target, or an appliance's
+ * minimum hours per day. Everything else is an appliance id.
+ */
+export type ChatAction =
+  | { action: 'keep'; applianceIds: string[] }
+  | { action: 'cut_first'; applianceIds: string[] }
+  | { action: 'set_target'; target: number }
+  | { action: 'set_min_hours'; applianceId: string; hours: number }
+  | { action: 'question' }
+  | { action: 'none' };
+
+/** Actions that change the plan, as opposed to the ones that only get an answer. */
+export type PlanChangeAction = Exclude<ChatAction, { action: 'question' | 'none' }>;
 
 /**
  * Whether the assistant can answer right now. 'thinking' shows the loading reply and

@@ -1,18 +1,12 @@
 import { create } from 'zustand';
 
-import {
-  explainBill,
-  explainRevision,
-  interpretMessage,
-  mergeConstraints,
-  NO_CHANGE_REPLY,
-  NO_PLAN_REPLY,
-  UNKNOWN_REPLY,
-} from '@/ai/mock-assistant';
-import { calibrate } from '@/optimizer/bill-calibration';
+import { explainPlanChange, answerFromPlan } from '@/ai/explain';
+import { interpretMessage } from '@/ai/interpret';
+import { DIDNT_CATCH_REPLY, NO_CHANGE_REPLY, NO_PLAN_REPLY } from '@/ai/templates';
+import { actionTargetsExist, applyAction, inputsBefore, isPlanChange, restoreInputs } from '@/optimizer/apply-action';
 import { computePlan } from '@/optimizer/compute-plan';
 import { buildBaseline, type Baseline } from '@/optimizer/optimizer';
-import { samePlanCuts } from '@/optimizer/plan-revision';
+import { planChanged } from '@/optimizer/plan-revision';
 import type { AssistantStatus, ChatMessage, PlanRevision } from '@/types/chat';
 import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanMode } from '@/types/energy';
 
@@ -54,8 +48,13 @@ type AppActions = {
   setPlan: (plan: Plan | null) => void;
   /** Recomputes `plan` and `baseline` from the current appliances, bill, target, mode and constraints. */
   refreshPlan: () => void;
-  /** Adds the user's message and the assistant's (mock) reply, revising the plan when the message asks for it. */
-  sendChatMessage: (text: string) => void;
+  /**
+   * Adds the user's message, then runs the AI pipeline: interpret, apply to the plan, explain. The
+   * assistant's reply (with the receipt, when the plan changed) is added when it finishes.
+   */
+  sendChatMessage: (text: string) => Promise<void>;
+  /** Runs the pipeline again for the latest user message, when the assistant could not be reached for it. */
+  retryLastMessage: () => Promise<void>;
   /** Reverts the plan change made by the latest revision in the chat. */
   undoRevision: (messageId: string) => void;
   /** Sets whether the assistant is ready, thinking or unreachable. */
@@ -108,53 +107,26 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
   setPlanMode: (planMode) => set({ planMode }),
   setPlan: (plan) => set({ plan }),
   refreshPlan: () => set(derive(get())),
-  sendChatMessage: (text) => {
-    const { appliances, billSettings, target, planMode, constraints, plan, chat } = get();
+  sendChatMessage: async (text) => {
+    if (get().assistantStatus === 'thinking') return;
     const sentAt = Date.now();
-    const userMessage: ChatMessage = { id: `user-${sentAt}`, role: 'user', text, sentAt };
-    const reply = (replyText: string, revision?: PlanRevision): ChatMessage => ({
-      id: `assistant-${sentAt}`,
-      role: 'assistant',
-      text: replyText,
-      sentAt,
-      revision,
-    });
-
-    const interpretation = interpretMessage(text, appliances);
-
-    if (interpretation.kind === 'question') {
-      const { ratePerKwh } = calibrate(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh);
-      set({ chat: [...chat, userMessage, reply(explainBill(appliances, ratePerKwh))] });
+    set((state) => ({
+      assistantStatus: 'thinking',
+      chat: [...state.chat, { id: `user-${sentAt}`, role: 'user', text, sentAt }],
+    }));
+    await respondTo(text);
+  },
+  retryLastMessage: async () => {
+    const { chat, assistantStatus } = get();
+    if (assistantStatus === 'thinking') return;
+    const last = chat[chat.length - 1];
+    // Only a user message nobody answered can be retried.
+    if (!last || last.role !== 'user') {
+      set({ assistantStatus: 'ready' });
       return;
     }
-    if (interpretation.kind === 'unknown') {
-      set({ chat: [...chat, userMessage, reply(UNKNOWN_REPLY)] });
-      return;
-    }
-    if (!plan) {
-      set({ chat: [...chat, userMessage, reply(NO_PLAN_REPLY)] });
-      return;
-    }
-
-    const merged = mergeConstraints(constraints, interpretation);
-    const next = computePlan(appliances, billSettings, target, planMode, merged);
-    if (!next || samePlanCuts(plan, next)) {
-      set({ constraints: merged, chat: [...chat, userMessage, reply(NO_CHANGE_REPLY)] });
-      return;
-    }
-
-    const revision: PlanRevision = {
-      number: chat.filter((message) => message.role === 'assistant' && message.revision).length + 1,
-      plan: next,
-      previousPlan: plan,
-      constraintsBefore: constraints,
-      keptApplianceIds: merged.keep,
-    };
-    set({
-      constraints: merged,
-      plan: next,
-      chat: [...chat, userMessage, reply(explainRevision(interpretation, next, appliances), revision)],
-    });
+    set({ assistantStatus: 'thinking' });
+    await respondTo(last.text);
   },
   undoRevision: (messageId) => {
     const { chat } = get();
@@ -163,7 +135,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
     const sentAt = Date.now();
     set({
-      constraints: latest.revision.constraintsBefore,
+      ...restoreInputs(get(), latest.revision),
       chat: [
         ...chat.map((message) => (message.id === messageId ? { ...message, revision: undefined } : message)),
         { id: `assistant-${sentAt}`, role: 'assistant', text: 'Undone. The plan is back to how it was.', sentAt },
@@ -182,6 +154,77 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     void clearPersistedState();
   },
 }));
+
+/**
+ * The chat pipeline for one user message (the message is already in `chat`).
+ *   1. interpret: Gemini turns the message into a validated action. Unreachable -> the offline reply.
+ *   2. apply: the action changes the target, minimum hours or constraints, and the optimizer replans.
+ *   3. explain: Gemini words the old and new plan, or a template does when it cannot.
+ * Question and none skip step 2. Every figure shown comes from the optimizer, never from AI text.
+ */
+async function respondTo(text: string): Promise<void> {
+  try {
+    await runPipeline(text);
+  } catch (error) {
+    // Never leave the composer locked on "thinking".
+    console.warn('Chat pipeline failed.', error);
+    useAppStore.setState({ assistantStatus: 'unavailable' });
+  }
+}
+
+async function runPipeline(text: string): Promise<void> {
+  const { getState: get, setState: set } = useAppStore;
+  const sentAt = Date.now();
+  const reply = (replyText: string, revision?: PlanRevision): ChatMessage => ({
+    id: `assistant-${sentAt}`,
+    role: 'assistant',
+    text: replyText,
+    sentAt,
+    revision,
+  });
+  const finish = (message: ChatMessage, changes: Partial<AppState> = {}) =>
+    set((state) => ({ ...changes, assistantStatus: 'ready', chat: [...state.chat, message] }));
+
+  const before = get();
+  let interpretation;
+  try {
+    interpretation = await interpretMessage(text, before.appliances, before.target);
+  } catch {
+    set({ assistantStatus: 'unavailable' });
+    return;
+  }
+  if (interpretation.kind === 'invalid') return finish(reply(DIDNT_CATCH_REPLY));
+
+  // The household may have changed while the model was answering.
+  const { appliances, billSettings, target, planMode, constraints, plan, baseline } = get();
+  const { action } = interpretation;
+
+  if (!isPlanChange(action)) {
+    if (!plan) return finish(reply(NO_PLAN_REPLY));
+    return finish(reply(await answerFromPlan(text, action.action, plan, baseline, appliances)));
+  }
+
+  if (!actionTargetsExist(action, appliances)) return finish(reply(DIDNT_CATCH_REPLY));
+  const inputs = applyAction(action, { appliances, target, constraints });
+  const next = computePlan(inputs.appliances, billSettings, inputs.target, planMode, inputs.constraints);
+  if (!next) return finish(reply(NO_PLAN_REPLY));
+
+  if (!planChanged(plan, next)) {
+    // Nothing the receipt would show, but keep the instruction (e.g. a kept appliance) for later plans.
+    return finish(reply(NO_CHANGE_REPLY), inputs);
+  }
+
+  const revision: PlanRevision = {
+    number: get().chat.filter((message) => message.role === 'assistant' && message.revision).length + 1,
+    plan: next,
+    previousPlan: plan,
+    keptApplianceIds: inputs.constraints.keep,
+    ...inputsBefore(action, { appliances, target, constraints }),
+  };
+  // Step 2 is done before the explanation is requested, so the plan on screen is already the new one.
+  set({ ...inputs, plan: next });
+  finish(reply(await explainPlanChange(text, action, appliances, plan, next), revision));
+}
 
 // Keep the plan in step with the household: any change to the appliances, bill settings, target or
 // strategy recomputes it, whichever screen made the change. Constraints are not watched: the chat

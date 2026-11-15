@@ -228,3 +228,8 @@ function bestStep(tier: CutState[], { changePenalty, convexity }: Weights) {
   }
   return best;
 }
+
+/** The appliance that costs the most per month, or null when there are none. */
+export function costliestItem(baseline: Baseline): ApplianceBaseline | null {
+  return baseline.items.reduce<ApplianceBaseline | null>((best, item) => (!best || item.cost > best.cost ? item : best), null);
+}

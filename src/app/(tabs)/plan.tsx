@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
@@ -12,10 +12,13 @@ import { PlanTargetAlertCard } from '@/components/plan-target-alert-card';
 import { PlanTargetCard } from '@/components/plan-target-card';
 import { Receipt } from '@/components/receipt';
 import { NotReachableReceipt } from '@/components/receipt-not-reachable';
+import { Snackbar } from '@/components/snackbar';
 import { StrategyToggle } from '@/components/strategy-toggle';
 import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
 import { calibrate } from '@/optimizer/bill-calibration';
+import { lowestReachableTarget } from '@/optimizer/plan-revision';
 import { useAppStore } from '@/store/app-store';
+import { formatPeso } from '@/utils/format';
 import { toNotReachableReceiptProps, toReceiptProps } from '@/utils/plan-receipt';
 
 export default function PlanScreen() {
@@ -25,6 +28,9 @@ export default function PlanScreen() {
   const planMode = useAppStore((state) => state.planMode);
   const plan = useAppStore((state) => state.plan);
   const setPlanMode = useAppStore((state) => state.setPlanMode);
+  const setTarget = useAppStore((state) => state.setTarget);
+  const [snackbar, setSnackbar] = useState<{ id: number; message: string; previousTarget: number | null; newTarget: number } | null>(null);
+  const dismissSnackbar = useCallback(() => setSnackbar(null), []);
 
   const { ratePerKwh, isCalibrated } = useMemo(
     () => calibrate(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),
@@ -34,6 +40,20 @@ export default function PlanScreen() {
   const rateSource = isCalibrated ? `Matched to ${utility} bill` : 'Default rate';
   const notReachable = plan?.status === 'not-reachable';
   const editTarget = () => router.push('/target-edit');
+
+  // "Use this plan" accepts the max-cuts plan: the target becomes the lowest bill the household can reach.
+  const acceptLowestPlan = () => {
+    if (!plan) return;
+    const newTarget = lowestReachableTarget(plan);
+    setSnackbar({ id: Date.now(), message: `Target set to ${formatPeso(newTarget)}`, previousTarget: target, newTarget });
+    setTarget(newTarget);
+  };
+
+  // Puts the old target back, unless the user has already changed it again since.
+  const undoAcceptLowestPlan = () => {
+    if (snackbar && useAppStore.getState().target === snackbar.newTarget) setTarget(snackbar.previousTarget);
+    setSnackbar(null);
+  };
 
   return (
     <View style={styles.screen}>
@@ -93,6 +113,7 @@ export default function PlanScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Use this plan"
+                onPress={acceptLowestPlan}
                 style={({ pressed }) => [styles.pillButton, styles.primaryPill, pressed && styles.buttonPressed]}>
                 <Icon name="check_circle" size={20} color={colors.onPrimary} />
                 <Text style={styles.buttonLabel}>Use this plan</Text>
@@ -100,9 +121,18 @@ export default function PlanScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Change my target"
+                onPress={editTarget}
                 style={({ pressed }) => [styles.pillButton, styles.tonalPill, pressed && styles.tonalPillPressed]}>
                 <Icon name="edit_note" size={20} color={colors.primary} />
                 <Text style={styles.tonalLabel}>Change my target</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Change the plan"
+                onPress={() => router.push('/plan-chat')}
+                style={({ pressed }) => [styles.pillButton, styles.outlinedPill, pressed && styles.outlinedPillPressed]}>
+                <Icon name="tune" size={20} color={colors.onSurface} />
+                <Text style={styles.outlinedLabel}>Change the plan</Text>
               </Pressable>
             </View>
           ) : (
@@ -123,6 +153,16 @@ export default function PlanScreen() {
           )}
         </View>
       </ScrollView>
+
+      {snackbar && (
+        <Snackbar
+          key={snackbar.id}
+          message={snackbar.message}
+          actionLabel="Undo"
+          onAction={undoAcceptLowestPlan}
+          onDismiss={dismissSnackbar}
+        />
+      )}
     </View>
   );
 }
@@ -242,5 +282,17 @@ const styles = StyleSheet.create({
   tonalLabel: {
     ...typography.labelMd,
     color: colors.primary,
+  },
+  // Outlined Secondary (design/DESIGN.md): transparent, 1.5dp border, border turns blue when pressed.
+  outlinedPill: {
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+  },
+  outlinedPillPressed: {
+    borderColor: colors.primaryContainer,
+  },
+  outlinedLabel: {
+    ...typography.labelMd,
+    color: colors.onSurface,
   },
 });

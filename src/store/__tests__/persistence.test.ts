@@ -196,7 +196,7 @@ describe('saving changes', () => {
     const { persistence, storage, useAppStore, hydrateStore } = load();
     await hydrateStore();
     useAppStore.getState().setAssistantStatus('thinking');
-    useAppStore.getState().sendChatMessage('hello');
+    useAppStore.setState({ chat: [{ id: 'user-1', role: 'user', text: 'hello', sentAt: 1 }] });
     await jest.advanceTimersByTimeAsync(persistence.SAVE_DEBOUNCE_MS * 2);
     expect(storage.setItem).not.toHaveBeenCalled();
   });
