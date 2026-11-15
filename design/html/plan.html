@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "error": "#ba1a1a", "secondary-fixed-dim": "#a5c9fb", "on-tertiary": "#ffffff", "tertiary-fixed": "#7ffc97", "surface": "#faf8ff", "surface-variant": "#dae2fd", "on-tertiary-container": "#aaffb3", "on-secondary-container": "#305681", "outline": "#727786", "secondary-fixed": "#d3e4ff", "on-background": "#131b2e", "on-primary-container": "#e5eaff", "tertiary": "#005f27", "on-tertiary-fixed-variant": "#005320", "surface-container": "#eaedff", "tertiary-fixed-dim": "#62df7d", "on-primary-fixed-variant": "#00429a", "outline-variant": "#c2c6d7", "on-secondary-fixed": "#001c38", "background": "#faf8ff", "secondary-container": "#a7ccfe", "on-primary-fixed": "#001944", "inverse-on-surface": "#eef0ff", "surface-container-highest": "#dae2fd", "on-secondary": "#ffffff", "primary-fixed": "#d9e2ff", "on-error-container": "#93000a", "primary-container": "#0263e0", "on-primary": "#ffffff", "on-surface-variant": "#424654", "primary-fixed-dim": "#b0c6ff", "primary": "#004cb0", "secondary": "#3b608c", "inverse-primary": "#b0c6ff", "on-secondary-fixed-variant": "#214873", "error-container": "#ffdad6", "surface-container-lowest": "#ffffff", "on-surface": "#131b2e", "surface-container-high": "#e2e7ff", "surface-container-low": "#f2f3ff", "on-error": "#ffffff", "tertiary-container": "#007b34", "inverse-surface": "#283044", "surface-dim": "#d2d9f4", "surface-bright": "#faf8ff", "surface-tint": "#0058ca", "on-tertiary-fixed": "#002109" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-xl": "2rem", "space-xs": "0.25rem", "gutter": "1rem", "space-md": "1rem", "space-lg": "1.5rem", "space-sm": "0.5rem", "margin": "1rem" }, fontFamily: { "receipt-label": ["JetBrains Mono"], "title-lg": ["Inter"], "headline-sm": ["Inter"], "receipt-numeric-lg": ["JetBrains Mono"], "headline-lg": ["Inter"], "headline-md": ["Inter"], "label-sm": ["Inter"], "body-md": ["Inter"], "receipt-numeric-md": ["JetBrains Mono"], "label-md": ["Inter"], "body-lg": ["Inter"], "title-md": ["Inter"] }, fontSize: { "receipt-label": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }], "title-lg": ["20px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-sm": ["22px", { "lineHeight": "28px", "fontWeight": "600" }], "receipt-numeric-lg": ["24px", { "lineHeight": "28px", "letterSpacing": "-0.03em", "fontWeight": "700" }], "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-md": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "500" }], "receipt-numeric-md": ["16px", { "lineHeight": "22px", "fontWeight": "500" }], "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }], "title-md": ["18px", { "lineHeight": "24px", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface flex flex-col min-h-screen selection:bg-secondary-container"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-6 px-margin flex items-center justify-between text-on-surface-variant text-[11px] font-medium tracking-tight"><span>09:41</span><div class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[14px]">signal_cellular_alt</span><span class="material-symbols-outlined text-[14px]">wifi</span><span class="material-symbols-outlined text-[14px]">battery_full</span></div></div><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary text-[28px]">bolt</span><h1 class="font-title-lg text-title-lg text-on-surface tracking-tight">Home</h1></div><div class="flex items-center gap-space-xs"><a aria-label="Bill Settings" class="w-12 h-12 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container active:bg-surface-container-high transition-colors" data-path="bill-settings" href="#"><span class="material-symbols-outlined text-[24px]">tune</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-[88px] pb-24 bg-surface min-h-screen"><div class="flex flex-col w-full max-w-[412px] mx-auto px-margin space-y-space-md pb-6">
+<!-- Sub-header Bar (Utility Actions) -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-space-xs">
+<span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+</span>
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Billing Optimization</span>
+</div>
+<div class="flex items-center">
+<button aria-label="Share Plan" class="w-12 h-12 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container active:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">share</span>
+</button>
+<button aria-label="Plan Information" class="w-12 h-12 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container active:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[24px]">info</span>
+</button>
+</div>
+</div>
+<!-- Target Budget Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_1px_3px_0_rgba(15,23,42,0.06),0_1px_2px_-1px_rgba(15,23,42,0.04)] flex flex-col gap-space-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface-variant">Monthly budget target</span>
+<button aria-label="Edit Budget Target" class="w-10 h-10 -mr-2 flex items-center justify-center rounded-full text-primary hover:bg-surface-container active:bg-surface-container-high transition-colors" type="button">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+<div class="flex items-baseline gap-1.5">
+<span class="font-receipt-numeric-lg text-[34px] leading-[40px] text-on-surface font-bold tracking-tight">₱2,000</span>
+<span class="font-body-md text-body-md text-on-surface-variant">/ month</span>
+</div>
+<div class="flex items-center gap-1.5 text-primary pt-0.5">
+<span class="material-symbols-outlined text-[16px]">touch_app</span>
+<span class="font-label-sm text-label-sm font-semibold">Tap to edit target threshold</span>
+</div>
+</div>
+<!-- Tariff Rate Pill Card -->
+<div class="bg-surface-container-low rounded-xl px-space-md py-3 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0 pr-2">
+<span class="material-symbols-outlined text-secondary text-[20px] shrink-0">speed</span>
+<div class="flex flex-col truncate">
+<div class="flex items-center gap-1 truncate">
+<span class="font-receipt-label text-receipt-label text-on-surface font-bold">₱12.00 / kWh</span>
+<span class="text-outline text-[10px]">•</span>
+<span class="font-body-md text-[13px] text-on-surface-variant truncate">Matched to Manila Electric bill</span>
+</div>
+</div>
+</div>
+<a class="inline-flex items-center justify-center h-10 px-3 rounded-lg text-primary hover:bg-surface-container font-label-md text-label-md transition-colors shrink-0" data-path="bill-settings" href="#">
+      Edit
+    </a>
+</div>
+<!-- Material 3 Segmented Button -->
+<div class="grid grid-cols-2 p-1 bg-surface-container rounded-full" role="tablist">
+<button aria-selected="true" class="h-10 rounded-full flex items-center justify-center gap-1.5 bg-surface-container-lowest text-on-surface font-label-md text-label-md shadow-sm transition-all duration-150" id="strategy-fewest" role="tab">
+<span class="material-symbols-outlined text-[18px] text-primary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span>Fewest changes</span>
+</button>
+<button aria-selected="false" class="h-10 rounded-full flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all duration-150" id="strategy-comfort" role="tab">
+<span class="material-symbols-outlined text-[18px]">bedtime</span>
+<span>Comfort first</span>
+</button>
+</div>
+<!-- THE PAPER RECEIPT COMPONENT -->
+<div class="w-full flex justify-center py-1">
+<div class="w-full max-w-[340px] bg-surface-container-lowest shadow-[0_8px_20px_-4px_rgba(15,23,42,0.12)] relative flex flex-col pt-5 px-5 pb-6" style="clip-path: polygon(0% 0%, 100% 0%, 100% calc(100% - 10px), 97.5% 100%, 95% calc(100% - 10px), 92.5% 100%, 90% calc(100% - 10px), 87.5% 100%, 85% calc(100% - 10px), 82.5% 100%, 80% calc(100% - 10px), 77.5% 100%, 75% calc(100% - 10px), 72.5% 100%, 70% calc(100% - 10px), 67.5% 100%, 65% calc(100% - 10px), 62.5% 100%, 60% calc(100% - 10px), 57.5% 100%, 55% calc(100% - 10px), 52.5% 100%, 50% calc(100% - 10px), 47.5% 100%, 45% calc(100% - 10px), 42.5% 100%, 40% calc(100% - 10px), 37.5% 100%, 35% calc(100% - 10px), 32.5% 100%, 30% calc(100% - 10px), 27.5% 100%, 25% calc(100% - 10px), 22.5% 100%, 20% calc(100% - 10px), 17.5% 100%, 15% calc(100% - 10px), 12.5% 100%, 10% calc(100% - 10px), 7.5% 100%, 5% calc(100% - 10px), 2.5% 100%, 0% calc(100% - 10px));">
+<!-- Receipt Top Decal / Branding -->
+<div class="flex flex-col items-center text-center space-y-1">
+<span class="font-receipt-label text-[13px] tracking-[0.2em] font-bold text-on-surface uppercase">★ YOUR PLAN ★</span>
+<span class="font-receipt-label text-[11px] text-on-surface-variant tracking-wider">WATT PLAN OPTIMIZER · OCT 2024</span>
+<span class="font-receipt-label text-[9px] text-outline tracking-widest">TERM-ID: PH-MNL-7749-X</span>
+</div>
+<!-- Stamp Badge feigning approval -->
+<div class="my-3 flex justify-center">
+<div class="px-2.5 py-0.5 rounded border-2 border-tertiary text-tertiary font-receipt-label text-[11px] font-bold tracking-widest uppercase rotate-[-2.5deg] shadow-xs">
+          TARGET FEASIBLE
+        </div>
+</div>
+<!-- Ledger Summary -->
+<div class="space-y-1 pt-1 pb-2">
+<div class="flex justify-between items-baseline font-receipt-label text-receipt-label">
+<span class="text-on-surface-variant">Current estimate</span>
+<span class="text-outline">. . . . . .</span>
+<span class="text-on-surface font-semibold">₱3,400</span>
+</div>
+<div class="flex justify-between items-baseline font-receipt-label text-receipt-label">
+<span class="text-on-surface-variant">Your target</span>
+<span class="text-outline">. . . . . .</span>
+<span class="text-primary font-bold">₱2,000</span>
+</div>
+</div>
+<!-- Dashed Separation Rule -->
+<div class="w-full my-2 border-t-2 border-dashed border-outline-variant"></div>
+<!-- Receipt Section Header -->
+<div class="py-1">
+<span class="font-receipt-label text-[11px] font-bold tracking-wider text-on-surface uppercase">RECOMMENDED CUTS</span>
+</div>
+<!-- Line Items -->
+<div class="space-y-2.5 py-1">
+<!-- Item 1: Aircon -->
+<div class="flex flex-col gap-0.5">
+<div class="flex justify-between items-center font-receipt-label text-receipt-label">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.2 rounded bg-[#FFF7ED] text-[#EA580C] text-[10px] font-bold">LUX</span>
+<span class="text-on-surface font-semibold">Aircon (Living Rm)</span>
+</div>
+<span class="font-receipt-numeric-md text-receipt-numeric-md font-bold text-tertiary">-₱1,050</span>
+</div>
+<div class="flex items-center justify-between font-receipt-label text-[11px] text-on-surface-variant pl-6">
+<span>6.0 h → 4.5 h daily</span>
+<span class="text-error font-medium">(-1.5 h)</span>
+</div>
+</div>
+<!-- Item 2: Water Heater / Additional trim -->
+<div class="flex flex-col gap-0.5">
+<div class="flex justify-between items-center font-receipt-label text-receipt-label">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant text-[10px] font-bold">ESS</span>
+<span class="text-on-surface font-semibold">Shower Heater</span>
+</div>
+<span class="font-receipt-numeric-md text-receipt-numeric-md font-bold text-tertiary">-₱290</span>
+</div>
+<div class="flex items-center justify-between font-receipt-label text-[11px] text-on-surface-variant pl-6">
+<span>Eco mode 38°C</span>
+<span class="text-error font-medium">(-15 min)</span>
+</div>
+</div>
+<!-- Item 3: TV -->
+<div class="flex flex-col gap-0.5">
+<div class="flex justify-between items-center font-receipt-label text-receipt-label">
+<div class="flex items-center gap-1.5">
+<span class="px-1.5 py-0.2 rounded bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold">FLX</span>
+<span class="text-on-surface font-semibold">Smart TV</span>
+</div>
+<span class="font-receipt-numeric-md text-receipt-numeric-md font-bold text-tertiary">-₱75</span>
+</div>
+<div class="flex items-center justify-between font-receipt-label text-[11px] text-on-surface-variant pl-6">
+<span>5.0 h → 4.0 h daily</span>
+<span class="text-error font-medium">(-1.0 h)</span>
+</div>
+</div>
+</div>
+<!-- Dashed Separation Rule -->
+<div class="w-full my-2 border-t-2 border-dashed border-outline-variant"></div>
+<!-- Receipt Totals -->
+<div class="space-y-1 pt-1 pb-3">
+<div class="flex justify-between items-baseline font-receipt-label text-receipt-label">
+<span class="text-on-surface-variant uppercase font-semibold">Total cuts</span>
+<span class="text-outline">. . . . . .</span>
+<span class="font-receipt-numeric-md text-receipt-numeric-md font-bold text-tertiary">-₱1,415</span>
+</div>
+<div class="flex justify-between items-baseline pt-1">
+<span class="font-receipt-label text-[13px] font-bold uppercase text-on-surface">Projected Bill</span>
+<span class="font-receipt-numeric-lg text-receipt-numeric-lg font-bold text-primary">₱1,985</span>
+</div>
+<div class="flex justify-between items-baseline font-receipt-label text-[11px] text-on-surface-variant">
+<span>Est. savings</span>
+<span class="font-semibold text-tertiary">-₱1,415 / mo</span>
+</div>
+</div>
+<!-- Receipt Barcode Decoration -->
+<div class="flex flex-col items-center pt-2 opacity-70">
+<div class="w-48 h-6 flex justify-between items-stretch gap-[2px]">
+<div class="w-1 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-1.5 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-2 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-1 bg-on-surface"></div>
+<div class="w-2 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-1 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-2 bg-on-surface"></div>
+<div class="w-1 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-1.5 bg-on-surface"></div>
+<div class="w-0.5 bg-on-surface"></div>
+<div class="w-1 bg-on-surface"></div>
+<div class="w-2 bg-on-surface"></div>
+</div>
+<span class="font-receipt-label text-[9px] tracking-widest mt-1 text-on-surface-variant">0924 8831 2000</span>
+</div>
+</div>
+</div>
+<!-- Target Reached Impact Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-tertiary-container/15 flex items-center justify-center shrink-0 text-tertiary">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div class="flex flex-col gap-0.5 min-w-0">
+<div class="flex items-center gap-2">
+<span class="font-title-md text-title-md font-bold text-tertiary">Target reached</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant text-[11px] font-bold">Feasible</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-snug">
+<span class="font-semibold text-on-surface">52 kWh</span> and <span class="font-semibold text-on-surface">28 kg CO₂</span> saved this cycle while preserving core appliance schedules.
+      </p>
+</div>
+</div>
+<!-- Bottom Interactive CTA Section -->
+<div class="flex flex-col items-center gap-space-xs pt-2">
+<button class="w-full h-12 bg-primary-container hover:bg-primary active:bg-primary/90 text-on-primary rounded-xl font-label-md text-label-md flex items-center justify-center gap-2 shadow-md active:shadow-sm transition-all" type="button">
+<span class="material-symbols-outlined text-[22px]">tune</span>
+<span>Change the plan</span>
+</button>
+<div class="flex items-center gap-1.5 text-on-surface-variant py-1">
+<span class="material-symbols-outlined text-[16px] text-tertiary">lock_clock</span>
+<span class="font-label-sm text-label-sm">Locks in daily schedule reminders &amp; push triggers</span>
+</div>
+</div>
+</div>
+<script>
+  (function initPlanTabs() {
+    const btnFewest = document.getElementById('strategy-fewest');
+    const btnComfort = document.getElementById('strategy-comfort');
+    if (!btnFewest || !btnComfort) return;
+
+    btnFewest.addEventListener('click', () => {
+      btnFewest.setAttribute('aria-selected', 'true');
+      btnComfort.setAttribute('aria-selected', 'false');
+      btnFewest.className = 'h-10 rounded-full flex items-center justify-center gap-1.5 bg-surface-container-lowest text-on-surface font-label-md text-label-md shadow-sm transition-all duration-150';
+      btnComfort.className = 'h-10 rounded-full flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all duration-150';
+    });
+
+    btnComfort.addEventListener('click', () => {
+      btnComfort.setAttribute('aria-selected', 'true');
+      btnFewest.setAttribute('aria-selected', 'false');
+      btnComfort.className = 'h-10 rounded-full flex items-center justify-center gap-1.5 bg-surface-container-lowest text-on-surface font-label-md text-label-md shadow-sm transition-all duration-150';
+      btnFewest.className = 'h-10 rounded-full flex items-center justify-center gap-1.5 text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-all duration-150';
+    });
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)]" data-active-classes="[&amp;_.m3-indicator]:bg-secondary-container [&amp;_.m3-indicator]:w-16 [&amp;_.m3-icon]:text-on-secondary-container [&amp;_.m3-label]:text-on-surface [&amp;_.m3-label]:font-semibold"><div class="h-20 max-w-[412px] mx-auto px-margin flex items-center justify-around"><a class="group flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1" data-path="home" href="#"><div class="m3-indicator flex items-center justify-center w-12 h-8 rounded-full transition-all duration-200 group-hover:bg-surface-container-high"><span class="material-symbols-outlined m3-icon text-[24px] text-on-surface-variant transition-colors">home</span></div><span class="m3-label font-label-sm text-label-sm text-on-surface-variant mt-1 transition-colors">Home</span></a><a class="group flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1" data-path="appliances" href="#"><div class="m3-indicator flex items-center justify-center w-12 h-8 rounded-full transition-all duration-200 group-hover:bg-surface-container-high"><span class="material-symbols-outlined m3-icon text-[24px] text-on-surface-variant transition-colors">devices</span></div><span class="m3-label font-label-sm text-label-sm text-on-surface-variant mt-1 transition-colors">Appliances</span></a><a class="group flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1" data-path="plan" href="#"><div class="m3-indicator flex items-center justify-center w-12 h-8 rounded-full transition-all duration-200 group-hover:bg-surface-container-high"><span class="material-symbols-outlined m3-icon text-[24px] text-on-surface-variant transition-colors">receipt_long</span></div><span class="m3-label font-label-sm text-label-sm text-on-surface-variant mt-1 transition-colors">Plan</span></a></div></nav></body></html>
