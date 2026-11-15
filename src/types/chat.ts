@@ -14,6 +14,12 @@ export type PlanRevision = {
   keptApplianceIds: string[];
 };
 
+/**
+ * Whether the assistant can answer right now. 'thinking' shows the loading reply and
+ * locks the composer; 'unavailable' shows the offline reply with Try again.
+ */
+export type AssistantStatus = 'ready' | 'thinking' | 'unavailable';
+
 export type ChatMessage =
   | { id: string; role: 'user'; text: string; sentAt: number }
   | { id: string; role: 'assistant'; text: string; sentAt: number; revision?: PlanRevision };

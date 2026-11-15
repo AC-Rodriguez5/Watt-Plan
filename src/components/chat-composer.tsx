@@ -3,6 +3,7 @@ import type { AndroidSymbol } from 'expo-symbols';
 
 import { Icon } from '@/components/icon';
 import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import type { AssistantStatus } from '@/types/chat';
 
 const SUGGESTIONS: { label: string; icon: AndroidSymbol }[] = [
   { label: 'Keep the aircon', icon: 'mode_fan' },
@@ -14,12 +15,15 @@ type ChatComposerProps = {
   value: string;
   onChangeText: (text: string) => void;
   onSend: () => void;
+  /** 'thinking' locks the input and mutes the chips while the assistant works. */
+  status?: AssistantStatus;
   /** Bottom safe-area inset, so the input clears the gesture bar. */
   bottomInset: number;
 };
 
 /** Suggestion chips and the message input pinned to the bottom of Plan chat. */
-export function ChatComposer({ value, onChangeText, onSend, bottomInset }: ChatComposerProps) {
+export function ChatComposer({ value, onChangeText, onSend, status = 'ready', bottomInset }: ChatComposerProps) {
+  const thinking = status === 'thinking';
   return (
     <View style={[styles.container, { paddingBottom: Math.max(bottomInset, spacing.md) }]}>
       <ScrollView
@@ -27,7 +31,8 @@ export function ChatComposer({ value, onChangeText, onSend, bottomInset }: ChatC
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.chips}
-        style={styles.chipScroll}>
+        pointerEvents={thinking ? 'none' : 'auto'}
+        style={[styles.chipScroll, thinking && styles.muted]}>
         {SUGGESTIONS.map(({ label, icon }) => (
           <Pressable
             key={label}
@@ -43,24 +48,28 @@ export function ChatComposer({ value, onChangeText, onSend, bottomInset }: ChatC
 
       <View style={styles.inputRow}>
         <View style={styles.field}>
-          <Icon name="chat_bubble_outline" size={20} color={colors.outline} />
+          {!thinking && <Icon name="chat_bubble_outline" size={20} color={colors.outline} />}
           <TextInput
-            value={value}
+            value={thinking ? '' : value}
             onChangeText={onChangeText}
             onSubmitEditing={onSend}
-            placeholder="e.g. I can't cut the fan"
+            editable={!thinking}
+            placeholder={thinking ? 'Assistant is preparing your plan...' : "e.g. I can't cut the fan"}
             placeholderTextColor={colors.outline}
             returnKeyType="send"
             autoComplete="off"
-            style={styles.input}
+            style={[styles.input, thinking && styles.inputDisabled]}
           />
+          {thinking && <Icon name="mic" size={20} color={colors.onSurfaceVariant} />}
         </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Send message"
+          accessibilityState={{ disabled: thinking }}
+          disabled={thinking}
           onPress={onSend}
-          style={({ pressed }) => [styles.send, pressed && styles.sendPressed]}>
-          <Icon name="send" size={24} color={colors.onPrimary} />
+          style={({ pressed }) => [styles.send, thinking && styles.sendDisabled, pressed && styles.sendPressed]}>
+          <Icon name={thinking ? 'arrow_upward' : 'send'} size={24} color={thinking ? colors.outlineVariant : colors.onPrimary} />
         </Pressable>
       </View>
     </View>
@@ -82,6 +91,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.gutter,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
+  },
+  muted: {
+    opacity: 0.7,
   },
   chip: {
     height: 48,
@@ -123,6 +135,13 @@ const styles = StyleSheet.create({
     height: '100%',
     ...typography.bodyMd,
     color: colors.onSurface,
+  },
+  inputDisabled: {
+    opacity: 0.75,
+  },
+  sendDisabled: {
+    backgroundColor: colors.surfaceContainerHigh,
+    boxShadow: 'none',
   },
   send: {
     width: 56,

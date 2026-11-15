@@ -1,4 +1,6 @@
 import type { ReceiptLineItem, ReceiptProps } from '@/components/receipt';
+import type { NotReachableReceiptProps } from '@/components/receipt-not-reachable';
+import { targetMargin } from '@/optimizer/plan-revision';
 import type { Appliance, BillSettings, Plan } from '@/types/energy';
 
 import { formatMonthYear } from './billing-period';
@@ -6,6 +8,7 @@ import { formatMonthYear } from './billing-period';
 /** Printed on the receipt for decoration only. */
 const TERM_ID = 'PH-MNL-7749-X';
 const BARCODE_NUMBER = '0924 8831 2000';
+const NOT_REACHABLE_BARCODE_NUMBER = 'OPT-7749-PH-2024';
 
 /** 4.5 -> "4.5 h" */
 function hours(value: number): string {
@@ -42,5 +45,24 @@ export function toReceiptProps(plan: Plan, appliances: Appliance[], bill: BillSe
     period: formatMonthYear(bill.periodEnd),
     termId: TERM_ID,
     barcodeNumber: BARCODE_NUMBER,
+  };
+}
+
+/** Same plan, shaped for the "target not reachable" receipt. */
+export function toNotReachableReceiptProps(
+  plan: Plan,
+  appliances: Appliance[],
+  bill: BillSettings,
+): NotReachableReceiptProps {
+  const { items, currentEstimate, target, totalCuts, period } = toReceiptProps(plan, appliances, bill);
+  return {
+    items,
+    currentEstimate,
+    target,
+    totalCuts,
+    period,
+    barcodeNumber: NOT_REACHABLE_BARCODE_NUMBER,
+    lowestBill: plan.projectedBill,
+    gap: Math.abs(targetMargin(plan)),
   };
 }

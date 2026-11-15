@@ -38,7 +38,7 @@ export type ReceiptProps = {
   barcodeNumber: string;
 };
 
-const CATEGORY_CHIP: Record<ReceiptCategory, { label: string; background: string; color: string }> = {
+export const CATEGORY_CHIP: Record<ReceiptCategory, { label: string; background: string; color: string }> = {
   luxury: { label: 'LUX', background: colors.alertContainer, color: colors.alert },
   essential: { label: 'ESS', background: colors.surfaceContainer, color: colors.onSurfaceVariant },
   flexible: { label: 'FLX', background: colors.secondaryFixed, color: colors.onSecondaryFixedVariant },
@@ -129,41 +129,50 @@ export function Receipt({
           </View>
         </View>
 
-        <View style={styles.barcode}>
-          <View style={styles.bars}>
-            {BARCODE_BARS.map((width, index) => (
-              <View key={index} style={{ width, backgroundColor: colors.onSurface }} />
-            ))}
-          </View>
-          <Text style={styles.barcodeNumber}>{barcodeNumber}</Text>
-        </View>
+        <Barcode number={barcodeNumber} />
       </View>
       <SawtoothEdge />
     </View>
   );
 }
 
-function LeaderRow({
+/** Decorative barcode with its number underneath. */
+export function Barcode({ number }: { number: string }) {
+  return (
+    <View style={styles.barcode}>
+      <View style={styles.bars}>
+        {BARCODE_BARS.map((width, index) => (
+          <View key={index} style={{ width, backgroundColor: colors.onSurface }} />
+        ))}
+      </View>
+      <Text style={styles.barcodeNumber}>{number}</Text>
+    </View>
+  );
+}
+
+export function LeaderRow({
   label,
   value,
   labelStyle,
+  leaderStyle,
   valueStyle,
 }: {
   label: string;
   value: string;
   labelStyle?: object;
+  leaderStyle?: object;
   valueStyle?: object;
 }) {
   return (
     <View style={styles.leaderRow}>
       <Text style={[styles.leaderLabel, labelStyle]}>{label}</Text>
-      <Text style={styles.leader}>{LEADER}</Text>
+      <Text style={[styles.leader, leaderStyle]}>{LEADER}</Text>
       <Text style={[styles.summaryValue, valueStyle]}>{value}</Text>
     </View>
   );
 }
 
-function DashedRule() {
+export function DashedRule() {
   const [width, setWidth] = useState(0);
   return (
     <View

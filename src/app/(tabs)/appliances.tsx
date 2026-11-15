@@ -3,8 +3,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { ApplianceCard } from '@/components/appliance-card';
+import { AppliancesEmptyState } from '@/components/appliances-empty-state';
 import { Icon } from '@/components/icon';
 import { colors, maxContentWidth, radii, shadows, spacing, typography, fontFamilies } from '@/constants/theme';
+import { effectiveRatePerKwh } from '@/optimizer/appliance-cost';
 import { PLACEHOLDER_ESTIMATES, PLACEHOLDER_MONTHLY_LOAD } from '@/store/placeholder-estimates';
 import { useAppStore } from '@/store/app-store';
 import { formatPeso } from '@/utils/format';
@@ -13,6 +15,8 @@ const QUICK_ADD = ['Refrigerator', 'Stand fan', 'Aircon', 'Smart TV', 'Rice cook
 
 export default function AppliancesScreen() {
   const appliances = useAppStore((state) => state.appliances);
+  const billSettings = useAppStore((state) => state.billSettings);
+  const isEmpty = appliances.length === 0;
 
   const openAddSheet = () => router.push('/appliance-add');
   const openEditSheet = (id: string) => router.push({ pathname: '/appliance-edit', params: { id } });
@@ -26,8 +30,8 @@ export default function AppliancesScreen() {
           <View style={styles.titleRow}>
             <View style={styles.titleGroup}>
               <Text style={styles.title}>My appliances</Text>
-              <View style={styles.countBadge}>
-                <Text style={styles.countText}>{appliances.length} items</Text>
+              <View style={[styles.countBadge, isEmpty && styles.countBadgeEmpty]}>
+                <Text style={[styles.countText, isEmpty && styles.countTextEmpty]}>{appliances.length} items</Text>
               </View>
             </View>
             <View style={styles.titleActions}>
@@ -40,61 +44,67 @@ export default function AppliancesScreen() {
             </View>
           </View>
 
-          <View style={styles.ribbonWrap}>
-            <View style={styles.ribbon}>
-              <View>
-                <Text style={styles.ribbonLabel}>ESTIMATED MONTHLY LOAD</Text>
-                <View style={styles.ribbonValueRow}>
-                  <Text style={styles.ribbonValue}>{formatPeso(PLACEHOLDER_MONTHLY_LOAD.cost)}</Text>
-                  <Text style={styles.ribbonUnit}>/ month</Text>
+          {isEmpty ? (
+            <AppliancesEmptyState ratePerKwh={effectiveRatePerKwh(billSettings)} onAdd={openAddSheet} />
+          ) : (
+            <>
+              <View style={styles.ribbonWrap}>
+                <View style={styles.ribbon}>
+                  <View>
+                    <Text style={styles.ribbonLabel}>ESTIMATED MONTHLY LOAD</Text>
+                    <View style={styles.ribbonValueRow}>
+                      <Text style={styles.ribbonValue}>{formatPeso(PLACEHOLDER_MONTHLY_LOAD.cost)}</Text>
+                      <Text style={styles.ribbonUnit}>/ month</Text>
+                    </View>
+                  </View>
+                  <View style={styles.kwhPill}>
+                    <Icon name="bolt" size={16} color={colors.tertiary} />
+                    <Text style={styles.kwhText}>{PLACEHOLDER_MONTHLY_LOAD.kwh} kWh</Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.kwhPill}>
-                <Icon name="bolt" size={16} color={colors.tertiary} />
-                <Text style={styles.kwhText}>{PLACEHOLDER_MONTHLY_LOAD.kwh} kWh</Text>
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.chipScroll}
+                contentContainerStyle={styles.chipRow}>
+                {QUICK_ADD.map((label) => (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${label}`}
+                    onPress={openAddSheet}
+                    style={({ pressed }) => [styles.quickChip, pressed && styles.quickChipPressed]}>
+                    <Icon name="add" size={18} color={colors.primary} />
+                    <Text style={styles.quickChipLabel}>{label}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+
+              <View style={styles.cardList}>
+                {appliances.map((appliance) => (
+                  <ApplianceCard
+                    key={appliance.id}
+                    appliance={appliance}
+                    estimate={PLACEHOLDER_ESTIMATES[appliance.id]}
+                    onPress={() => openEditSheet(appliance.id)}
+                  />
+                ))}
               </View>
-            </View>
-          </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.chipScroll}
-            contentContainerStyle={styles.chipRow}>
-            {QUICK_ADD.map((label) => (
-              <Pressable
-                key={label}
-                accessibilityRole="button"
-                accessibilityLabel={`Add ${label}`}
-                onPress={openAddSheet}
-                style={({ pressed }) => [styles.quickChip, pressed && styles.quickChipPressed]}>
-                <Icon name="add" size={18} color={colors.primary} />
-                <Text style={styles.quickChipLabel}>{label}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-
-          <View style={styles.cardList}>
-            {appliances.map((appliance) => (
-              <ApplianceCard
-                key={appliance.id}
-                appliance={appliance}
-                estimate={PLACEHOLDER_ESTIMATES[appliance.id]}
-                onPress={() => openEditSheet(appliance.id)}
-              />
-            ))}
-          </View>
-
-          <View style={styles.tipCard}>
-            <Icon name="tips_and_updates" size={22} color={colors.primary} />
-            <View style={styles.tipBody}>
-              <Text style={styles.tipTitle}>Tip for hot afternoons</Text>
-              <Text style={styles.tipText}>
-                Running your stand fan alongside your inverter AC at 25°C delivers the same cooling sensation as 22°C
-                while saving up to ₱320/month.
-              </Text>
-            </View>
-          </View>
+              <View style={styles.tipCard}>
+                <Icon name="tips_and_updates" size={22} color={colors.primary} />
+                <View style={styles.tipBody}>
+                  <Text style={styles.tipTitle}>Tip for hot afternoons</Text>
+                  <Text style={styles.tipText}>
+                    Running your stand fan alongside your inverter AC at 25°C delivers the same cooling sensation as 22°C
+                    while saving up to ₱320/month.
+                  </Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
 
@@ -151,6 +161,14 @@ const styles = StyleSheet.create({
     ...typography.labelSm,
     fontFamily: fontFamilies.inter.semiBold,
     color: colors.onSecondaryContainer,
+  },
+  countBadgeEmpty: {
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  countTextEmpty: {
+    ...typography.receiptLabel,
+    letterSpacing: 0,
+    color: colors.onSurfaceVariant,
   },
   titleActions: {
     flexDirection: 'row',

@@ -12,7 +12,7 @@ import {
 import { calibrate } from '@/optimizer/bill-calibration';
 import { samePlanCuts } from '@/optimizer/plan-revision';
 import { planStub } from '@/optimizer/stub-planner';
-import type { ChatMessage, PlanRevision } from '@/types/chat';
+import type { AssistantStatus, ChatMessage, PlanRevision } from '@/types/chat';
 import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanMode } from '@/types/energy';
 
 import { EMPTY_BILL_SETTINGS, SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
@@ -35,6 +35,8 @@ type AppState = {
   constraints: PlanConstraints;
   /** Plan chat history. Lives here so it survives leaving and reopening the screen. */
   chat: ChatMessage[];
+  /** Whether the assistant can answer right now. Plan chat draws the loading and offline replies from it. */
+  assistantStatus: AssistantStatus;
 };
 
 type AppActions = {
@@ -51,6 +53,8 @@ type AppActions = {
   sendChatMessage: (text: string) => void;
   /** Reverts the plan change made by the latest revision in the chat. */
   undoRevision: (messageId: string) => void;
+  /** Sets whether the assistant is ready, thinking or unreachable. */
+  setAssistantStatus: (status: AssistantStatus) => void;
   /** Clears appliances, bill figures, target and plan. */
   resetAll: () => void;
 };
@@ -63,6 +67,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
   plan: null,
   constraints: NO_CONSTRAINTS,
   chat: [],
+  assistantStatus: 'ready',
 
   addAppliance: (appliance) =>
     set((state) => ({
@@ -144,6 +149,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     });
     get().refreshPlan();
   },
+  setAssistantStatus: (assistantStatus) => set({ assistantStatus }),
   resetAll: () =>
     set({
       appliances: [],
@@ -152,5 +158,6 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       plan: null,
       constraints: NO_CONSTRAINTS,
       chat: [],
+      assistantStatus: 'ready',
     }),
 }));

@@ -76,6 +76,13 @@ export const colors = {
   // Alert / over budget (High-load Orange: luxury chips, overruns)
   alert: '#ea580c',
   alertContainer: '#fff7ed',
+  alertBorder: '#fed7aa',
+  /** Pressed state of an action on alertContainer */
+  alertContainerPressed: '#ffedd5',
+  /** Text on alertContainer */
+  onAlertContainer: '#7c2d12',
+  /** Action text on alertContainer */
+  alertAction: '#c2410c',
 } as const;
 
 export type ColorToken = keyof typeof colors;
