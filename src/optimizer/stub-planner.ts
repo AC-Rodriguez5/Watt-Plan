@@ -1,4 +1,4 @@
-import type { Appliance, BillSettings, Plan, PlanCut, PlanMode } from '@/types/energy';
+import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanCut, type PlanMode } from '@/types/energy';
 
 import { monthlyCost, monthlyKwh } from './appliance-cost';
 import { calibrate } from './bill-calibration';
@@ -24,6 +24,9 @@ type Candidate = {
  * - `fewest-changes` empties the biggest savers first, so it touches as few appliances as it can.
  * - `comfort-first` takes the same share of every cuttable appliance's room to cut.
  *
+ * - `constraints.keep` appliances are never cut. `constraints.cutFirst` appliances are cut as far
+ *   as they go before the mode's strategy touches anything else.
+ *
  * Returns null when there is nothing to plan: no target, or no appliances.
  */
 export function planStub(
@@ -31,6 +34,7 @@ export function planStub(
   bill: BillSettings,
   target: number | null,
   mode: PlanMode,
+  constraints: PlanConstraints = NO_CONSTRAINTS,
 ): Plan | null {
   if (target === null || target <= 0 || appliances.length === 0) return null;
 
@@ -39,7 +43,7 @@ export function planStub(
 
   const candidates = appliances
     .map<Candidate>((appliance) => {
-      const floor = cutFloor(appliance);
+      const floor = constraints.keep.includes(appliance.id) ? appliance.hoursPerDay : cutFloor(appliance);
       return {
         appliance,
         floor,
@@ -48,12 +52,7 @@ export function planStub(
     })
     .filter(({ maxSaving }) => maxSaving > 0);
 
-  const cuts =
-    needed === 0
-      ? []
-      : mode === 'fewest-changes'
-        ? cutBiggestFirst(candidates, needed, ratePerKwh)
-        : cutEvenly(candidates, needed, ratePerKwh);
+  const cuts = needed === 0 ? [] : planCuts(candidates, needed, ratePerKwh, mode, constraints.cutFirst);
 
   const totalCuts = cuts.reduce((sum, cut) => sum + cut.saving, 0);
   const kwhSaved = cuts.reduce((sum, cut) => {
@@ -74,6 +73,25 @@ export function planStub(
     co2SavedKg: kwhSaved * CO2_KG_PER_KWH,
     cuts,
   };
+}
+
+function planCuts(
+  candidates: Candidate[],
+  needed: number,
+  ratePerKwh: number,
+  mode: PlanMode,
+  cutFirst: string[],
+): PlanCut[] {
+  const first = candidates.filter(({ appliance }) => cutFirst.includes(appliance.id));
+  const rest = candidates.filter(({ appliance }) => !cutFirst.includes(appliance.id));
+
+  // Empty the asked-for appliances first, then let the mode share out what is still needed.
+  const cuts = first.map((candidate) => buildCut(candidate, 1, ratePerKwh));
+  const stillNeeded = needed - cuts.reduce((sum, cut) => sum + cut.saving, 0);
+  if (stillNeeded <= 0) return cuts;
+
+  const more = mode === 'fewest-changes' ? cutBiggestFirst(rest, stillNeeded, ratePerKwh) : cutEvenly(rest, stillNeeded, ratePerKwh);
+  return [...cuts, ...more];
 }
 
 function cutFloor({ category, hoursPerDay, minHoursPerDay }: Appliance): number {

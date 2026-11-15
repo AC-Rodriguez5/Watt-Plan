@@ -7,6 +7,7 @@ import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { BillHeaderActions } from '@/components/bill-header-actions';
+import { HeaderAvatar } from '@/components/header-avatar';
 import { colors, typography } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -52,7 +53,7 @@ export default function RootLayout() {
           name="bill-settings"
           options={{ title: 'My Electricity Bill', headerRight: () => <BillHeaderActions /> }}
         />
-        <Stack.Screen name="plan-chat" options={{ title: 'Change The Plan' }} />
+        <Stack.Screen name="plan-chat" options={{ title: 'Change The Plan', headerRight: () => <HeaderAvatar /> }} />
         <Stack.Screen name="appliance-add" options={SHEET_OPTIONS} />
         <Stack.Screen name="appliance-edit" options={SHEET_OPTIONS} />
       </Stack>

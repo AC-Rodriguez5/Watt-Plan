@@ -42,3 +42,11 @@ export function formatPesoExact(value: number): string {
 export function formatPesoCut(value: number): string {
   return `-₱${groupThousands(value)}`;
 }
+
+/** A timestamp as "10:14 AM" (device local time). */
+export function formatClock(timestamp: number): string {
+  const date = new Date(timestamp);
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  return `${hours % 12 === 0 ? 12 : hours % 12}:${minutes} ${hours < 12 ? 'AM' : 'PM'}`;
+}

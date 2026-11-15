@@ -42,6 +42,16 @@ export type PlanMode = 'fewest-changes' | 'comfort-first';
 
 export type PlanStatus = 'feasible' | 'not-reachable';
 
+/** What the user asked for in chat, as data the optimizer understands. Ids are appliance ids. */
+export type PlanConstraints = {
+  /** Appliances the planner must leave untouched. */
+  keep: string[];
+  /** Appliances the planner cuts before any others. */
+  cutFirst: string[];
+};
+
+export const NO_CONSTRAINTS: PlanConstraints = { keep: [], cutFirst: [] };
+
 export type PlanCut = {
   applianceId: string;
   fromHoursPerDay: number;

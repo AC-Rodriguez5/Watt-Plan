@@ -178,8 +178,8 @@ function DashedRule() {
   );
 }
 
-/** Torn-paper bottom edge: white teeth hanging under the receipt body. */
-function SawtoothEdge() {
+/** Torn-paper bottom edge: teeth hanging under the receipt body, in the paper's color. */
+export function SawtoothEdge({ color = colors.surfaceContainerLowest }: { color?: string }) {
   const [width, setWidth] = useState(0);
   const count = Math.max(1, Math.round(width / TOOTH_WIDTH));
   const tooth = width / count;
@@ -191,7 +191,7 @@ function SawtoothEdge() {
     <View onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)} style={styles.sawtooth}>
       {width > 0 && (
         <Svg width={width} height={TOOTH_DEPTH}>
-          <Polygon points={points.join(' ')} fill={colors.surfaceContainerLowest} />
+          <Polygon points={points.join(' ')} fill={color} />
         </Svg>
       )}
     </View>
