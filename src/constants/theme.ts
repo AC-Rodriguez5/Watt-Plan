@@ -80,6 +80,28 @@ export const colors = {
 
 export type ColorToken = keyof typeof colors;
 
+/** Appliance category styling, as drawn on the appliance cards (design/screens/appliances.png). */
+export const categoryColors = {
+  essential: {
+    chipBackground: colors.surfaceContainer,
+    chipText: colors.onSurfaceVariant,
+    iconBackground: colors.surfaceContainerHigh,
+    iconTint: colors.onSurfaceVariant,
+  },
+  flexible: {
+    chipBackground: colors.secondaryContainer,
+    chipText: colors.onSecondaryContainer,
+    iconBackground: `${colors.secondaryContainer}66`,
+    iconTint: colors.primary,
+  },
+  luxury: {
+    chipBackground: colors.errorContainer,
+    chipText: colors.onErrorContainer,
+    iconBackground: `${colors.errorContainer}66`,
+    iconTint: colors.error,
+  },
+} as const;
+
 // ---------------------------------------------------------------------------
 // Typography
 // ---------------------------------------------------------------------------
@@ -157,6 +179,7 @@ export const radii = {
 export const shadows = {
   level1: '0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04)',
   level2: '0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05)',
+  appBar: '0 1px 8px 0 rgba(0, 0, 0, 0.04)',
   level3: '0 10px 15px -3px rgba(2, 99, 224, 0.25), 0 4px 6px -4px rgba(2, 99, 224, 0.15)',
   receipt: '0 8px 20px -4px rgba(15, 23, 42, 0.12)',
 } as const;

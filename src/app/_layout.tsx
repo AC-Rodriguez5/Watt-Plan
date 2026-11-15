@@ -13,6 +13,14 @@ SplashScreen.preventAutoHideAsync();
 /** Back target for pushed screens, so a cold link to one still has Home beneath it. */
 export const unstable_settings = { anchor: '(tabs)' };
 
+/** Bottom sheet for the add/edit appliance routes. */
+const SHEET_OPTIONS = {
+  presentation: 'formSheet',
+  headerShown: false,
+  sheetAllowedDetents: [0.9] as number[],
+  contentStyle: { backgroundColor: colors.surfaceContainerLowest },
+} as const;
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
@@ -41,6 +49,8 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="bill-settings" options={{ title: 'My Electricity Bill' }} />
         <Stack.Screen name="plan-chat" options={{ title: 'Change The Plan' }} />
+        <Stack.Screen name="appliance-add" options={SHEET_OPTIONS} />
+        <Stack.Screen name="appliance-edit" options={SHEET_OPTIONS} />
       </Stack>
     </ThemeProvider>
   );
