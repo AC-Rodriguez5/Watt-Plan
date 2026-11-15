@@ -1,6 +1,6 @@
 import { router, Stack } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -34,16 +34,10 @@ export default function PlanChatScreen() {
   const plan = useAppStore((state) => state.plan);
   const chat = useAppStore((state) => state.chat);
   const appliances = useAppStore((state) => state.appliances);
-  const refreshPlan = useAppStore((state) => state.refreshPlan);
   const sendChatMessage = useAppStore((state) => state.sendChatMessage);
   const assistantStatus = useAppStore((state) => state.assistantStatus);
   const setAssistantStatus = useAppStore((state) => state.setAssistantStatus);
   const undoRevision = useAppStore((state) => state.undoRevision);
-
-  // Opened without visiting the Plan tab first: make sure there is a plan to show.
-  useEffect(() => {
-    if (!useAppStore.getState().plan) refreshPlan();
-  }, [refreshPlan]);
 
   const send = () => {
     const text = draft.trim();

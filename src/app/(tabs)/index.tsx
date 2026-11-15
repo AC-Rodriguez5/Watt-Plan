@@ -12,12 +12,10 @@ export default function HomeScreen() {
   const appliances = useAppStore((state) => state.appliances);
   const billSettings = useAppStore((state) => state.billSettings);
   const target = useAppStore((state) => state.target);
+  const baseline = useAppStore((state) => state.baseline);
 
   const isSetUp = isHomeSetUp(appliances, billSettings);
-  const summary = useMemo(
-    () => (isSetUp ? summarizeHome(appliances, billSettings, target) : null),
-    [isSetUp, appliances, billSettings, target],
-  );
+  const summary = useMemo(() => (isSetUp ? summarizeHome(baseline, target) : null), [isSetUp, baseline, target]);
 
   return (
     <View style={styles.screen}>

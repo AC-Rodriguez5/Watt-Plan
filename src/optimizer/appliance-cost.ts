@@ -3,6 +3,9 @@ import type { Appliance, BillSettings } from '@/types/energy';
 /** Average weeks in a month, used to turn weekly usage into a monthly figure. */
 export const WEEKS_PER_MONTH = 4.33;
 
+/** kg of CO₂ per kWh on the Philippine grid. Rounded; used for the Home carbon card and plan savings. */
+export const CO2_KG_PER_KWH = 0.55;
+
 /** Rate (₱ per kWh) used until the user has entered a last bill to derive one from. */
 export const DEFAULT_RATE_PER_KWH = 12.5;
 

@@ -10,17 +10,19 @@ import {
   UNKNOWN_REPLY,
 } from '@/ai/mock-assistant';
 import { calibrate } from '@/optimizer/bill-calibration';
+import { computePlan } from '@/optimizer/compute-plan';
+import { buildBaseline, type Baseline } from '@/optimizer/optimizer';
 import { samePlanCuts } from '@/optimizer/plan-revision';
-import { planStub } from '@/optimizer/stub-planner';
 import type { AssistantStatus, ChatMessage, PlanRevision } from '@/types/chat';
 import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanMode } from '@/types/energy';
 
 import { EMPTY_BILL_SETTINGS, SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
 
 /**
- * The one shared store. The Plan screen and Plan chat both read `plan`, so they
- * always show the same plan. The store only holds data; money and kWh math
- * lives in src/optimizer.
+ * The one shared store. Home, the Plan screen and Plan chat all read `plan` and `baseline`, so they
+ * always show the same numbers. Both are recomputed here whenever the appliances, bill settings,
+ * target or strategy change (see the subscription below the store). The store only holds data;
+ * money and kWh math lives in src/optimizer.
  */
 type AppState = {
   appliances: Appliance[];
@@ -29,8 +31,10 @@ type AppState = {
   target: number | null;
   /** Strategy the next plan is computed with. */
   planMode: PlanMode;
-  /** Latest optimizer result. Null until a plan has been computed. */
+  /** Latest optimizer result. Null while there is no target or no appliances. */
   plan: Plan | null;
+  /** The household's calibrated monthly kWh and cost per appliance. Home's figures come from it. */
+  baseline: Baseline;
   /** What the user asked for in chat. Every plan is computed with these applied. */
   constraints: PlanConstraints;
   /** Plan chat history. Lives here so it survives leaving and reopening the screen. */
@@ -47,7 +51,7 @@ type AppActions = {
   setTarget: (target: number | null) => void;
   setPlanMode: (mode: PlanMode) => void;
   setPlan: (plan: Plan | null) => void;
-  /** Recomputes `plan` from the current appliances, bill, target and mode. */
+  /** Recomputes `plan` and `baseline` from the current appliances, bill, target, mode and constraints. */
   refreshPlan: () => void;
   /** Adds the user's message and the assistant's (mock) reply, revising the plan when the message asks for it. */
   sendChatMessage: (text: string) => void;
@@ -59,13 +63,31 @@ type AppActions = {
   resetAll: () => void;
 };
 
-export const useAppStore = create<AppState & AppActions>()((set, get) => ({
+/** Everything derived from the household: the baseline and the plan, computed by src/optimizer. */
+function derive({
+  appliances,
+  billSettings,
+  target,
+  planMode,
+  constraints,
+}: Pick<AppState, 'appliances' | 'billSettings' | 'target' | 'planMode' | 'constraints'>): Pick<AppState, 'plan' | 'baseline'> {
+  return {
+    baseline: buildBaseline(appliances, billSettings),
+    plan: computePlan(appliances, billSettings, target, planMode, constraints),
+  };
+}
+
+const INITIAL_INPUTS = {
   appliances: SAMPLE_APPLIANCES,
   billSettings: SAMPLE_BILL_SETTINGS,
-  target: SAMPLE_TARGET,
-  planMode: 'fewest-changes',
-  plan: null,
+  target: SAMPLE_TARGET as number | null,
+  planMode: 'fewest-changes' as PlanMode,
   constraints: NO_CONSTRAINTS,
+};
+
+export const useAppStore = create<AppState & AppActions>()((set, get) => ({
+  ...INITIAL_INPUTS,
+  ...derive(INITIAL_INPUTS),
   chat: [],
   assistantStatus: 'ready',
 
@@ -82,10 +104,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
   setTarget: (target) => set({ target }),
   setPlanMode: (planMode) => set({ planMode }),
   setPlan: (plan) => set({ plan }),
-  refreshPlan: () => {
-    const { appliances, billSettings, target, planMode, constraints } = get();
-    set({ plan: planStub(appliances, billSettings, target, planMode, constraints) });
-  },
+  refreshPlan: () => set(derive(get())),
   sendChatMessage: (text) => {
     const { appliances, billSettings, target, planMode, constraints, plan, chat } = get();
     const sentAt = Date.now();
@@ -115,7 +134,7 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     }
 
     const merged = mergeConstraints(constraints, interpretation);
-    const next = planStub(appliances, billSettings, target, planMode, merged);
+    const next = computePlan(appliances, billSettings, target, planMode, merged);
     if (!next || samePlanCuts(plan, next)) {
       set({ constraints: merged, chat: [...chat, userMessage, reply(NO_CHANGE_REPLY)] });
       return;
@@ -156,8 +175,23 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       billSettings: EMPTY_BILL_SETTINGS,
       target: null,
       plan: null,
+      baseline: buildBaseline([], EMPTY_BILL_SETTINGS),
       constraints: NO_CONSTRAINTS,
       chat: [],
       assistantStatus: 'ready',
     }),
 }));
+
+// Keep the plan in step with the household: any change to the appliances, bill settings, target or
+// strategy recomputes it, whichever screen made the change. Constraints are not watched: the chat
+// sets them together with the plan it computed, and undo recomputes explicitly.
+useAppStore.subscribe((state, previous) => {
+  if (
+    state.appliances !== previous.appliances ||
+    state.billSettings !== previous.billSettings ||
+    state.target !== previous.target ||
+    state.planMode !== previous.planMode
+  ) {
+    state.refreshPlan();
+  }
+});

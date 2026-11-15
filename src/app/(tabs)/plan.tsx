@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
@@ -25,12 +25,6 @@ export default function PlanScreen() {
   const planMode = useAppStore((state) => state.planMode);
   const plan = useAppStore((state) => state.plan);
   const setPlanMode = useAppStore((state) => state.setPlanMode);
-  const refreshPlan = useAppStore((state) => state.refreshPlan);
-
-  // Keep the shared plan in step with the household, the target and the chosen strategy.
-  useEffect(() => {
-    refreshPlan();
-  }, [appliances, billSettings, target, planMode, refreshPlan]);
 
   const { ratePerKwh, isCalibrated } = useMemo(
     () => calibrate(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),
@@ -39,6 +33,7 @@ export default function PlanScreen() {
   const utility = billSettings.utility.split(' ')[0];
   const rateSource = isCalibrated ? `Matched to ${utility} bill` : 'Default rate';
   const notReachable = plan?.status === 'not-reachable';
+  const editTarget = () => router.push('/target-edit');
 
   return (
     <View style={styles.screen}>
@@ -52,6 +47,7 @@ export default function PlanScreen() {
               target={target}
               ratePerKwh={ratePerKwh}
               rateSource={rateSource}
+              onEditTarget={editTarget}
               onEditRate={() => router.push('/bill-settings')}
             />
           ) : (
@@ -73,7 +69,7 @@ export default function PlanScreen() {
                 </View>
               </View>
 
-              {target !== null && <PlanTargetCard target={target} />}
+              {target !== null && <PlanTargetCard target={target} onEdit={editTarget} />}
 
               <PlanRateCard ratePerKwh={ratePerKwh} source={rateSource} onEdit={() => router.push('/bill-settings')} />
             </>

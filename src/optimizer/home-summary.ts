@@ -1,9 +1,9 @@
 import type { Appliance, BillSettings } from '@/types/energy';
 
-import { effectiveRatePerKwh, monthlyCost, monthlyKwh } from './appliance-cost';
+import { CO2_KG_PER_KWH } from './appliance-cost';
+import type { Baseline } from './optimizer';
 
-/** kg of CO₂ per kWh on the Philippine grid. Rounded; used for the Home carbon card. */
-export const CO2_KG_PER_KWH = 0.55;
+export { CO2_KG_PER_KWH };
 
 export type CostlyAppliance = {
   appliance: Appliance;
@@ -14,7 +14,7 @@ export type CostlyAppliance = {
 };
 
 export type HomeSummary = {
-  /** PLACEHOLDER: sum of every appliance's monthly cost at the household rate. */
+  /** Pesos per month: the optimizer's baseline, which adds up to the last bill once one is entered. */
   estimatedBill: number;
   /** kWh per month across all appliances. */
   kwh: number;
@@ -41,18 +41,13 @@ export type HomeSummary = {
 };
 
 /**
- * Home tab figures. The bill estimate is deliberately simple for now: it adds up
- * each appliance's cost and ignores tiers, taxes and standby load. Swap it for the
- * calibrated estimate when the real optimizer lands.
+ * Home tab figures, taken from the optimizer's baseline (calibrated to the last bill) so Home and
+ * the Plan screen always agree on the estimated bill and on each appliance's cost.
  */
-export function summarizeHome(appliances: Appliance[], bill: BillSettings, target: number | null): HomeSummary {
-  const ratePerKwh = effectiveRatePerKwh(bill);
+export function summarizeHome(baseline: Baseline, target: number | null): HomeSummary {
+  const { ratePerKwh, items, kwh, cost: estimatedBill } = baseline;
 
-  const costs = appliances.map((appliance) => ({ appliance, cost: monthlyCost(appliance, ratePerKwh) }));
-  const estimatedBill = costs.reduce((sum, { cost }) => sum + cost, 0);
-  const kwh = appliances.reduce((sum, appliance) => sum + monthlyKwh(appliance), 0);
-
-  const ranked = [...costs].sort((a, b) => b.cost - a.cost).slice(0, 3);
+  const ranked = [...items].sort((a, b) => b.cost - a.cost).slice(0, 3);
   const maxCost = ranked[0]?.cost ?? 0;
   const topCosts = ranked.map(({ appliance, cost }) => ({
     appliance,
@@ -73,26 +68,20 @@ export function summarizeHome(appliances: Appliance[], bill: BillSettings, targe
     overGoal: hasTarget ? excess / target : 0,
     barFill: !hasTarget ? 0 : Math.min(1, estimatedBill / target),
     goalShare: hasTarget && estimatedBill > target ? target / estimatedBill : 1,
-    tip: oneHourTip(costs, ratePerKwh),
+    tip: oneHourTip(baseline),
     isOverTarget: excess > 0,
     topCosts,
-    applianceCount: appliances.length,
+    applianceCount: items.length,
   };
 }
 
-function oneHourTip(
-  costs: { appliance: Appliance; cost: number }[],
-  ratePerKwh: number,
-): HomeSummary['tip'] {
-  const candidate = costs
+/** One less hour a day on the costliest non-essential appliance, priced from the baseline. Null if none. */
+function oneHourTip({ items }: Baseline): HomeSummary['tip'] {
+  const candidate = items
     .filter(({ appliance }) => appliance.category !== 'essential' && appliance.hoursPerDay >= 1)
     .sort((a, b) => b.cost - a.cost)[0];
   if (!candidate) return null;
-  const { appliance } = candidate;
-  return {
-    applianceName: appliance.name,
-    saving: monthlyCost({ ...appliance, hoursPerDay: 1 }, ratePerKwh),
-  };
+  return { applianceName: candidate.appliance.name, saving: candidate.costPerDailyHour };
 }
 
 /** kWh per day across all appliances, averaging each one's days-per-week. */

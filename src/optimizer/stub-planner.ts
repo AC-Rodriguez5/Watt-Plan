@@ -1,8 +1,7 @@
 import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanCut, type PlanMode } from '@/types/energy';
 
-import { monthlyCost, monthlyKwh } from './appliance-cost';
+import { CO2_KG_PER_KWH, monthlyCost, monthlyKwh } from './appliance-cost';
 import { calibrate } from './bill-calibration';
-import { CO2_KG_PER_KWH } from './home-summary';
 
 /** Cuts are rounded up to this many hours so the receipt shows tidy figures. */
 const HOUR_STEP = 0.5;
@@ -16,8 +15,8 @@ type Candidate = {
 };
 
 /**
- * STUB: a simple greedy planner so the Plan screen has real numbers to show. Swap it
- * for the real optimizer later; keep the same signature and `Plan` result.
+ * FALLBACK ONLY: a simple greedy planner. The app uses `optimize` (optimizer.ts) and only falls
+ * back to this one, via computePlan, when the optimizer throws. Same signature and `Plan` result.
  *
  * - Luxury appliances can be cut to zero. Essential and flexible ones only down to the
  *   minimum hours the household set, and not at all when none is set.
@@ -61,6 +60,7 @@ export function planStub(
     return sum + monthlyKwh(appliance) - monthlyKwh({ ...appliance, hoursPerDay: cut.toHoursPerDay });
   }, 0);
   const projectedBill = currentEstimate - totalCuts;
+  const floor = currentEstimate - candidates.reduce((sum, { maxSaving }) => sum + maxSaving, 0);
 
   return {
     mode,
@@ -68,6 +68,7 @@ export function planStub(
     target,
     currentEstimate,
     projectedBill,
+    floor,
     totalCuts,
     kwhSaved,
     co2SavedKg: kwhSaved * CO2_KG_PER_KWH,

@@ -16,7 +16,7 @@ type BillFigures = Pick<
 const GROUPED_NUMBER = /^\d{1,3}(,\d{3})+(\.\d*)?$/;
 
 /** Like parseNonNegative, but also accepts thousands separators ("3,400.00"). */
-function parseAmount(text: string): { value: number } | { error: string } {
+export function parseAmount(text: string): { value: number } | { error: string } {
   const trimmed = text.trim();
   return parseNonNegative(GROUPED_NUMBER.test(trimmed) ? trimmed.replace(/,/g, '') : trimmed);
 }

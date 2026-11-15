@@ -67,7 +67,10 @@ export type Plan = {
   /** Monthly target the plan was computed for, in pesos. */
   target: number;
   currentEstimate: number;
+  /** Bill after the cuts. When the target is not reachable this is the floor. */
   projectedBill: number;
+  /** Lowest realistic bill: every appliance at its minimum hours (luxury at zero). Pesos per month. */
+  floor: number;
   totalCuts: number;
   /** kWh per month the cuts save. */
   kwhSaved: number;

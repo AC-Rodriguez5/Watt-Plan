@@ -23,6 +23,9 @@ const SHEET_OPTIONS = {
   contentStyle: { backgroundColor: colors.surfaceContainerLowest },
 } as const;
 
+/** Shorter sheet for the single-field target editor. */
+const TARGET_SHEET_OPTIONS = { ...SHEET_OPTIONS, sheetAllowedDetents: [0.5] as number[] } as const;
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [fontsLoaded, fontError] = useFonts({
@@ -56,6 +59,7 @@ export default function RootLayout() {
         <Stack.Screen name="plan-chat" options={{ title: 'Change The Plan', headerRight: () => <HeaderAvatar /> }} />
         <Stack.Screen name="appliance-add" options={SHEET_OPTIONS} />
         <Stack.Screen name="appliance-edit" options={SHEET_OPTIONS} />
+        <Stack.Screen name="target-edit" options={TARGET_SHEET_OPTIONS} />
       </Stack>
     </ThemeProvider>
   );
