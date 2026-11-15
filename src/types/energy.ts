@@ -13,6 +13,11 @@ export type Appliance = {
   watts: number;
   hoursPerDay: number;
   daysPerWeek: number;
+  /**
+   * Lowest hours per day the household can live with. The optimizer never cuts
+   * below this. Only set for essential and flexible appliances; luxury has none.
+   */
+  minHoursPerDay?: number;
   /** Free-text secondary line, e.g. "Living room" or "Tue / Thu / Sat". */
   note?: string;
 };

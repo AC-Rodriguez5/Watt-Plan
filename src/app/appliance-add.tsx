@@ -1,8 +1,5 @@
-import { View } from 'react-native';
+import { ApplianceSheet } from '@/components/appliance-sheet';
 
-import { colors } from '@/constants/theme';
-
-/** Placeholder: the add-appliance sheet content is not built yet. */
 export default function ApplianceAddSheet() {
-  return <View style={{ flex: 1, backgroundColor: colors.surfaceContainerLowest }} />;
+  return <ApplianceSheet mode="add" />;
 }

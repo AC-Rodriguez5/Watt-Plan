@@ -1,8 +1,15 @@
-import { View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 
-import { colors } from '@/constants/theme';
+import { ApplianceSheet } from '@/components/appliance-sheet';
+import { useAppStore } from '@/store/app-store';
 
-/** Placeholder: the edit-appliance sheet content is not built yet. Receives `id` as a route param. */
+/** Receives the appliance `id` as a route param. */
 export default function ApplianceEditSheet() {
-  return <View style={{ flex: 1, backgroundColor: colors.surfaceContainerLowest }} />;
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const appliance = useAppStore((state) => state.appliances.find((a) => a.id === id));
+
+  // Also renders null for the instant after Delete removes the appliance, while the sheet closes.
+  if (!appliance) return null;
+
+  return <ApplianceSheet mode="edit" appliance={appliance} />;
 }
