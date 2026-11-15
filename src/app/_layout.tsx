@@ -3,12 +3,14 @@ import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fon
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { BillHeaderActions } from '@/components/bill-header-actions';
 import { HeaderAvatar } from '@/components/header-avatar';
 import { colors, typography } from '@/constants/theme';
+import { hydrateStore } from '@/store/hydrate';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,8 +39,14 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
   });
 
-  // The native splash stays up (preventAutoHideAsync) until the overlay mounts.
-  if (!fontsLoaded && !fontError) return null;
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    hydrateStore().then(() => setHydrated(true));
+  }, []);
+
+  // The native splash stays up (preventAutoHideAsync) until the overlay mounts, which waits for the
+  // fonts and the saved household so no screen renders with the sample data first.
+  if ((!fontsLoaded && !fontError) || !hydrated) return null;
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

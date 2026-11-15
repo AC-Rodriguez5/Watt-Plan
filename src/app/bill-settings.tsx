@@ -70,7 +70,7 @@ export default function BillSettingsScreen() {
   };
 
   const confirmReset = () => {
-    Alert.alert('Reset all data?', 'This clears your appliances, last bill and target. It cannot be undone.', [
+    Alert.alert('Reset all data?', 'This replaces your appliances, last bill and target with the sample household. It cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',

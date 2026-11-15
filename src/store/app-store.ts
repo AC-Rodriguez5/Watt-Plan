@@ -16,7 +16,8 @@ import { samePlanCuts } from '@/optimizer/plan-revision';
 import type { AssistantStatus, ChatMessage, PlanRevision } from '@/types/chat';
 import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanMode } from '@/types/energy';
 
-import { EMPTY_BILL_SETTINGS, SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
+import { clearPersistedState, type PersistedState } from './persistence';
+import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
 
 /**
  * The one shared store. Home, the Plan screen and Plan chat all read `plan` and `baseline`, so they
@@ -59,7 +60,9 @@ type AppActions = {
   undoRevision: (messageId: string) => void;
   /** Sets whether the assistant is ready, thinking or unreachable. */
   setAssistantStatus: (status: AssistantStatus) => void;
-  /** Clears appliances, bill figures, target and plan. */
+  /** Replaces the household with saved data loaded at launch. */
+  hydrate: (saved: PersistedState) => void;
+  /** Restores the sample household and erases the saved copy. */
   resetAll: () => void;
 };
 
@@ -169,17 +172,15 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
     get().refreshPlan();
   },
   setAssistantStatus: (assistantStatus) => set({ assistantStatus }),
-  resetAll: () =>
-    set({
-      appliances: [],
-      billSettings: EMPTY_BILL_SETTINGS,
-      target: null,
-      plan: null,
-      baseline: buildBaseline([], EMPTY_BILL_SETTINGS),
-      constraints: NO_CONSTRAINTS,
-      chat: [],
-      assistantStatus: 'ready',
-    }),
+  hydrate: (saved) => {
+    const inputs = { ...saved, constraints: NO_CONSTRAINTS };
+    set({ ...inputs, ...derive(inputs) });
+  },
+  resetAll: () => {
+    set({ ...INITIAL_INPUTS, ...derive(INITIAL_INPUTS), chat: [], assistantStatus: 'ready' });
+    // After the set: its change schedules a save of the defaults, which this cancels along with the stored copy.
+    void clearPersistedState();
+  },
 }));
 
 // Keep the plan in step with the household: any change to the appliances, bill settings, target or
