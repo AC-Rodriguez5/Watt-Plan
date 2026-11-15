@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { Appliance, BillSettings, Plan } from '@/types/energy';
 
-import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
+import { EMPTY_BILL_SETTINGS, SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
 
 /**
  * The one shared store. The Plan screen and Plan chat both read `plan`, so they
@@ -25,6 +25,8 @@ type AppActions = {
   updateBillSettings: (changes: Partial<BillSettings>) => void;
   setTarget: (target: number | null) => void;
   setPlan: (plan: Plan | null) => void;
+  /** Clears appliances, bill figures, target and plan. */
+  resetAll: () => void;
 };
 
 export const useAppStore = create<AppState & AppActions>()((set) => ({
@@ -45,4 +47,5 @@ export const useAppStore = create<AppState & AppActions>()((set) => ({
   updateBillSettings: (changes) => set((state) => ({ billSettings: { ...state.billSettings, ...changes } })),
   setTarget: (target) => set({ target }),
   setPlan: (plan) => set({ plan }),
+  resetAll: () => set({ appliances: [], billSettings: EMPTY_BILL_SETTINGS, target: null, plan: null }),
 }));

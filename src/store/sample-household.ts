@@ -41,6 +41,19 @@ export const SAMPLE_BILL_SETTINGS: BillSettings = {
   periodEnd: '2024-10-31',
   lastBillTotal: 3400,
   lastBillKwh: 283,
+  generationCharge: 1850,
+  distributionCharge: 720,
+  taxesCharge: 830,
+};
+
+/** What "Reset all data" restores: the same utility and period, no bill figures. */
+export const EMPTY_BILL_SETTINGS: BillSettings = {
+  ...SAMPLE_BILL_SETTINGS,
+  lastBillTotal: null,
+  lastBillKwh: null,
+  generationCharge: null,
+  distributionCharge: null,
+  taxesCharge: null,
 };
 
 /** Monthly bill target in pesos. */

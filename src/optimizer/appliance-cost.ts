@@ -27,7 +27,7 @@ export function monthlyCost(usage: ApplianceUsage, ratePerKwh: number): number {
  * The household's effective ₱ per kWh: last bill total divided by last bill kWh.
  * Falls back to DEFAULT_RATE_PER_KWH when either figure is missing.
  */
-export function effectiveRatePerKwh(bill: BillSettings): number {
+export function effectiveRatePerKwh(bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>): number {
   const { lastBillTotal, lastBillKwh } = bill;
   if (lastBillTotal === null || lastBillKwh === null || lastBillKwh <= 0 || lastBillTotal <= 0) {
     return DEFAULT_RATE_PER_KWH;

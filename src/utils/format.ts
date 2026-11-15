@@ -27,6 +27,17 @@ export function formatPeso(value: number): string {
   return `${value < 0 ? '-' : ''}₱${groupThousands(value)}`;
 }
 
+/** 3400 -> "3,400.00" (a peso amount to the centavo, without the symbol) */
+export function formatAmount(value: number): string {
+  const [whole, fraction] = Math.abs(value).toFixed(2).split('.');
+  return `${value < 0 ? '-' : ''}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
+}
+
+/** 3400 -> "₱3,400.00" */
+export function formatPesoExact(value: number): string {
+  return `${value < 0 ? '-' : ''}₱${formatAmount(Math.abs(value))}`;
+}
+
 /** 1050 -> "-₱1,050" (shows an amount as a deduction) */
 export function formatPesoCut(value: number): string {
   return `-₱${groupThousands(value)}`;

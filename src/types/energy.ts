@@ -32,6 +32,10 @@ export type BillSettings = {
   lastBillTotal: number | null;
   /** Last bill usage in kWh. Null until the user enters it. */
   lastBillKwh: number | null;
+  /** Optional split of the last bill, in pesos. Null for any line the user left blank. */
+  generationCharge: number | null;
+  distributionCharge: number | null;
+  taxesCharge: number | null;
 };
 
 export type PlanMode = 'fewest-changes' | 'comfort-first';

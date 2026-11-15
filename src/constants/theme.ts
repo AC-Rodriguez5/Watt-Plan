@@ -87,18 +87,21 @@ export const categoryColors = {
     chipText: colors.onSurfaceVariant,
     iconBackground: colors.surfaceContainerHigh,
     iconTint: colors.onSurfaceVariant,
+    barColor: colors.secondary,
   },
   flexible: {
     chipBackground: colors.secondaryContainer,
     chipText: colors.onSecondaryContainer,
     iconBackground: `${colors.secondaryContainer}66`,
     iconTint: colors.primary,
+    barColor: colors.primaryContainer,
   },
   luxury: {
     chipBackground: colors.errorContainer,
     chipText: colors.onErrorContainer,
     iconBackground: `${colors.errorContainer}66`,
     iconTint: colors.error,
+    barColor: colors.error,
   },
 } as const;
 

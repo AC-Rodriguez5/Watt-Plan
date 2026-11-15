@@ -1,4 +1,3 @@
-import type { AndroidSymbol } from 'expo-symbols';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { CategoryChip } from '@/components/category-chip';
@@ -6,16 +5,8 @@ import { Icon } from '@/components/icon';
 import { categoryColors, colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
 import type { ApplianceDetailTone, PlaceholderEstimate } from '@/store/placeholder-estimates';
 import type { Appliance } from '@/types/energy';
+import { applianceIcon } from '@/utils/appliance-icon';
 import { formatPeso } from '@/utils/format';
-
-const APPLIANCE_ICONS: Record<string, AndroidSymbol> = {
-  aircon: 'ac_unit',
-  refrigerator: 'kitchen',
-  tv: 'tv',
-  'stand-fan': 'mode_fan',
-  'rice-cooker': 'soup_kitchen',
-  washer: 'local_laundry_service',
-};
 
 const DETAIL_COLORS: Record<ApplianceDetailTone, string> = {
   neutral: colors.onSurfaceVariant,
@@ -43,7 +34,7 @@ export function ApplianceCard({ appliance, estimate, onPress }: ApplianceCardPro
       <View style={styles.topRow}>
         <View style={styles.identity}>
           <View style={[styles.iconBadge, { backgroundColor: palette.iconBackground }]}>
-            <Icon name={APPLIANCE_ICONS[appliance.id] ?? 'bolt'} size={24} color={palette.iconTint} />
+            <Icon name={applianceIcon(appliance.id)} size={24} color={palette.iconTint} />
           </View>
           <View style={styles.titleColumn}>
             <View style={styles.nameRow}>
