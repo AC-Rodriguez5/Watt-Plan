@@ -16,12 +16,6 @@ const PREVIEW_APPLIANCES = [
   { label: '1.5 HP Aircon', icon: 'ac_unit' },
 ] as const;
 
-const STEPS = [
-  { title: 'Inventory your heavy draws', body: 'Aircons, freezers, and heaters drive up to 75% of your total expense.' },
-  { title: 'Set your cap target', body: 'Name your desired monthly ceiling in pesos (e.g., ₱3,500).' },
-  { title: 'Receive your tailored receipt', body: 'Get clear hourly cuts (e.g. shift AC by 45 mins) to guarantee savings.' },
-];
-
 const LEADER = '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .';
 
 type HomeSetupProps = {
@@ -43,7 +37,6 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
           <View style={styles.statusDot} />
           <Text style={styles.statusText}>Setup in 2 quick steps</Text>
         </View>
-        <Text style={styles.noCycle}>NO ACTIVE CYCLE</Text>
       </View>
 
       <View style={styles.hero}>
@@ -60,7 +53,6 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
         </Svg>
         <View style={styles.heroText}>
           <Text style={styles.heroTitle}>Take charge of your Meralco bill</Text>
-          <Text style={styles.heroSubtitle}>Track wattage, avoid bill shock, and hit real peso targets.</Text>
         </View>
       </View>
 
@@ -72,7 +64,7 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
           badgeBackground={colors.primaryFixed}
           badgeColor={colors.onPrimaryFixed}
           title="Add your appliances"
-          body="List the gadgets and equipment you run daily. We'll compute your baseline wattage and live daily load."
+          body="List what you use every day."
         />
         <View style={styles.previewRow}>
           {PREVIEW_APPLIANCES.map(({ label, icon }) => (
@@ -103,39 +95,25 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
           badgeBackground={colors.surfaceContainerHighest}
           badgeColor={colors.onSurfaceVariant}
           title="Add your recent bill"
-          body="Input your latest utility kWh rate so daily peso conversions stay precise to your provider."
+          body="Copy two numbers from your last bill."
         />
-        <View style={styles.billRow}>
-          <View style={styles.supports}>
-            <Icon name="verified" size={18} color={colors.onSurfaceVariant} />
-            <Text style={styles.supportsText}>Supports Meralco &amp; provincial co-ops</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Enter bill rate"
-            onPress={() => router.push('/bill-settings')}
-            style={({ pressed }) => [styles.billButton, pressed && styles.billButtonPressed]}>
-            <Text style={styles.billButtonLabel}>Enter bill rate</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Enter bill"
+          onPress={() => router.push('/bill-settings')}
+          style={({ pressed }) => [styles.billButton, pressed && styles.billButtonPressed]}>
+          <Text style={styles.billButtonLabel}>Enter bill</Text>
+        </Pressable>
       </View>
 
       <View style={styles.receipt}>
         <View style={styles.receiptHeader}>
-          <View style={styles.receiptTitleGroup}>
-            <Icon name="receipt" size={18} color={colors.outline} />
-            <Text style={styles.receiptTitle} numberOfLines={2}>
-              PROJECTED SAVINGS RECEIPT
-            </Text>
-          </View>
-          <View style={styles.awaiting}>
-            <Text style={styles.awaitingText}>AWAITING DATA</Text>
-          </View>
+          <Icon name="receipt" size={18} color={colors.outline} />
+          <Text style={styles.receiptTitle}>YOUR PLAN</Text>
         </View>
         <View style={styles.ledger}>
-          <LedgerRow label="Target budget" value={`${formatPeso(target ?? 0)}.00`} valueStyle={styles.ledgerBold} />
-          <LedgerRow label="Total daily load" value={`${dailyKwh.toFixed(2)} kWh`} />
-          <LedgerRow label="Average monthly cut" value="~₱1,400.00" valueStyle={styles.ledgerSaving} />
+          <LedgerRow label="Target" value={target === null ? '—' : formatPeso(target)} valueStyle={styles.ledgerBold} />
+          <LedgerRow label="Daily use" value={`${dailyKwh.toFixed(2)} kWh`} />
         </View>
         <View style={styles.tornEdge}>
           <Svg width="100%" height={12} viewBox="0 0 320 12" preserveAspectRatio="none">
@@ -144,26 +122,6 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
               points="0,0 10,12 20,0 30,12 40,0 50,12 60,0 70,12 80,0 90,12 100,0 110,12 120,0 130,12 140,0 150,12 160,0 170,12 180,0 190,12 200,0 210,12 220,0 230,12 240,0 250,12 260,0 270,12 280,0 290,12 300,0 310,12 320,0"
             />
           </Svg>
-        </View>
-      </View>
-
-      <View style={styles.guide}>
-        <View style={styles.guideTitleRow}>
-          <Icon name="lightbulb" size={20} color={colors.primary} />
-          <Text style={styles.guideTitle}>How Watt Plan cuts bills</Text>
-        </View>
-        <View style={styles.guideSteps}>
-          {STEPS.map((step, index) => (
-            <View key={step.title} style={styles.guideStep}>
-              <View style={styles.guideNumber}>
-                <Text style={styles.guideNumberText}>{index + 1}</Text>
-              </View>
-              <View style={styles.guideCopy}>
-                <Text style={styles.guideStepTitle}>{step.title}</Text>
-                <Text style={styles.guideStepBody}>{step.body}</Text>
-              </View>
-            </View>
-          ))}
         </View>
       </View>
 
@@ -185,7 +143,7 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
         {!hasAppliances && (
           <View style={styles.lockRow}>
             <Icon name="lock" size={14} color={colors.outline} />
-            <Text style={styles.lockText}>Add at least 1 appliance to unlock plan generation</Text>
+            <Text style={styles.lockText}>Add an appliance first</Text>
           </View>
         )}
       </View>
@@ -264,11 +222,6 @@ const styles = StyleSheet.create({
     ...typography.labelSm,
     color: colors.onSecondaryContainer,
   },
-  noCycle: {
-    ...typography.receiptLabel,
-    letterSpacing: 0.6,
-    color: colors.outline,
-  },
 
   hero: {
     height: 144,
@@ -284,11 +237,6 @@ const styles = StyleSheet.create({
   heroTitle: {
     ...typography.titleMd,
     color: colors.surfaceContainerLowest,
-  },
-  heroSubtitle: {
-    ...typography.labelSm,
-    marginTop: 2,
-    color: colors.surfaceContainerHigh,
   },
 
   stepCard: {
@@ -382,26 +330,9 @@ const styles = StyleSheet.create({
     ...typography.titleMd,
     color: colors.onPrimary,
   },
-  billRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  supports: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  supportsText: {
-    ...typography.labelSm,
-    flex: 1,
-    color: colors.onSurfaceVariant,
-  },
   billButton: {
     minHeight: 48,
+    alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
     borderRadius: radii.md,
@@ -427,33 +358,12 @@ const styles = StyleSheet.create({
   receiptHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
     paddingBottom: 12,
-  },
-  receiptTitleGroup: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
   },
   receiptTitle: {
     ...typography.receiptLabel,
     flex: 1,
-    color: colors.outline,
-  },
-  awaiting: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radii.sm,
-    backgroundColor: colors.surfaceContainer,
-    transform: [{ rotate: '-2deg' }],
-  },
-  awaitingText: {
-    ...typography.receiptLabel,
-    fontFamily: fontFamilies.mono.bold,
-    fontSize: 11,
-    letterSpacing: 1.1,
     color: colors.outline,
   },
   ledger: {
@@ -486,66 +396,10 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.mono.bold,
     color: colors.onSurface,
   },
-  ledgerSaving: {
-    fontFamily: fontFamilies.mono.bold,
-    color: colors.tertiary,
-  },
   tornEdge: {
     height: 12,
     marginTop: 12,
     marginHorizontal: -spacing.md,
-  },
-
-  guide: {
-    gap: 12,
-    padding: spacing.md,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surfaceContainerLow,
-  },
-  guideTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  guideTitle: {
-    ...typography.titleMd,
-    color: colors.onSurface,
-  },
-  guideSteps: {
-    gap: 10,
-  },
-  guideStep: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    padding: 12,
-    borderRadius: radii.md,
-    backgroundColor: `${colors.surfaceContainerLowest}cc`,
-  },
-  guideNumber: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.full,
-    backgroundColor: colors.primaryContainer,
-  },
-  guideNumberText: {
-    ...typography.labelSm,
-    fontFamily: fontFamilies.inter.bold,
-    color: colors.onPrimary,
-  },
-  guideCopy: {
-    flex: 1,
-  },
-  guideStepTitle: {
-    ...typography.labelMd,
-    color: colors.onSurface,
-  },
-  guideStepBody: {
-    ...typography.labelSm,
-    marginTop: 2,
-    color: colors.onSurfaceVariant,
   },
 
   generate: {

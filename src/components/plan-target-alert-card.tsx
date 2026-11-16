@@ -26,7 +26,7 @@ export function PlanTargetAlertCard({ target, ratePerKwh, rateSource, onEditTarg
         <Text style={styles.label}>MONTHLY BUDGET TARGET</Text>
         <View style={styles.badge}>
           <Icon name="warning" size={14} color={colors.onErrorContainer} />
-          <Text style={styles.badgeText}>Target: {formatPeso(target)}</Text>
+          <Text style={styles.badgeText}>Too low</Text>
         </View>
       </View>
 

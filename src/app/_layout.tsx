@@ -64,7 +64,7 @@ export default function RootLayout() {
           name="bill-settings"
           options={{ title: 'My Electricity Bill', headerRight: () => <BillHeaderActions /> }}
         />
-        <Stack.Screen name="plan-chat" options={{ title: 'Change The Plan', headerRight: () => <HeaderAvatar /> }} />
+        <Stack.Screen name="plan-chat" options={{ title: 'Change the Plan', headerRight: () => <HeaderAvatar /> }} />
         <Stack.Screen name="appliance-add" options={SHEET_OPTIONS} />
         <Stack.Screen name="appliance-edit" options={SHEET_OPTIONS} />
         <Stack.Screen name="target-edit" options={TARGET_SHEET_OPTIONS} />

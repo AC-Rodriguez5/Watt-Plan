@@ -58,6 +58,7 @@ export function TargetSheet() {
           onBlur={() => setText(tidyAmount(text))}
           prefix="₱"
           placeholder="0.00"
+          maxLength={12}
           helper="Pesos per month"
           error={error}
         />
@@ -95,7 +96,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: maxContentWidth,
     alignSelf: 'center',
-    gap: spacing.md,
+    gap: spacing.lg,
     paddingHorizontal: spacing.margin,
   },
   header: {
@@ -120,7 +121,9 @@ const styles = StyleSheet.create({
   closeButtonPressed: {
     backgroundColor: colors.surfaceContainerHigh,
   },
+  // 24 gap + 8 = 32 above the button, so it reads as separate from the field.
   save: {
+    marginTop: spacing.sm,
     minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',

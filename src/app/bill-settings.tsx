@@ -96,7 +96,7 @@ export default function BillSettingsScreen() {
               <Icon name="receipt_long" size={22} color={colors.primary} />
             </View>
             <View style={styles.introText}>
-              <Text style={styles.introBody}>Enter your last bill so we can match the estimate to your real usage.</Text>
+              <Text style={styles.introBody}>Copy these from your last bill.</Text>
               <View style={styles.chips}>
                 {period !== '' && (
                   <View style={styles.chip}>
@@ -119,8 +119,9 @@ export default function BillSettingsScreen() {
             onChangeText={(text) => setField('total', text)}
             onBlur={() => setField('total', tidyAmount(values.total))}
             placeholder="0.00"
+            maxLength={12}
             trailing={<Icon name="document_scanner" size={20} color={colors.onSurfaceVariant} />}
-            helper="Matches Total Amount Due on paper stub"
+            helper={'"Total Amount Due" on your bill'}
             helperIcon="check_circle"
             error={errors.total}
           />
@@ -130,12 +131,13 @@ export default function BillSettingsScreen() {
             value={values.kwh}
             onChangeText={(text) => setField('kwh', text)}
             placeholder="0"
+            maxLength={6}
             trailing={
               <View style={styles.unitPill}>
                 <Text style={styles.unitText}>KWH</Text>
               </View>
             }
-            helper={'Found under "Actual Consumption / kWh Used"'}
+            helper={'"Actual Consumption" on your bill'}
             error={errors.kwh}
           />
 
@@ -150,7 +152,7 @@ export default function BillSettingsScreen() {
           <View style={styles.actions}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Save calibration"
+              accessibilityLabel="Save bill"
               onPress={save}
               style={({ pressed }) => [
                 styles.saveButton,
@@ -158,7 +160,7 @@ export default function BillSettingsScreen() {
                 pressed && !saved && styles.saveButtonPressed,
               ]}>
               <Icon name={saved ? 'check' : 'save'} size={20} color={colors.onPrimary} />
-              <Text style={styles.saveLabel}>{saved ? 'Saved & Recalibrated!' : 'Save calibration'}</Text>
+              <Text style={styles.saveLabel}>{saved ? 'Saved' : 'Save bill'}</Text>
             </Pressable>
 
             <Pressable
@@ -189,7 +191,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: maxContentWidth - spacing.margin * 2,
     alignSelf: 'center',
-    gap: spacing.md,
+    // Groups 24 apart; the buttons get 8 more (actions paddingTop) so they sit 32 below.
+    gap: spacing.lg,
   },
 
   intro: {
@@ -197,7 +200,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: spacing.sm,
     padding: spacing.md,
-    marginBottom: spacing.sm,
     borderRadius: radii.lg,
     backgroundColor: colors.surfaceContainerLow,
     boxShadow: shadows.level1,

@@ -48,7 +48,7 @@ export function AppliancesEmptyState({ ratePerKwh, onAdd }: AppliancesEmptyState
         </View>
       </View>
 
-      <Text style={styles.suggestionsLabel}>QUICK ADD SUGGESTIONS</Text>
+      <Text style={styles.suggestionsLabel}>QUICK ADD</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -78,11 +78,8 @@ export function AppliancesEmptyState({ ratePerKwh, onAdd }: AppliancesEmptyState
           <Icon name="lightbulb" size={20} color={colors.onSecondaryContainer} />
         </View>
         <View style={styles.tipBody}>
-          <Text style={styles.tipTitle}>Smart saving strategy</Text>
-          <Text style={styles.tipText}>
-            Tip: Adding your high-draw appliances first (like Aircon and Refrigerator) gives the fastest path to
-            cutting your bill.
-          </Text>
+          <Text style={styles.tipTitle}>Tip</Text>
+          <Text style={styles.tipText}>Start with your aircon and refrigerator. They use the most.</Text>
         </View>
       </View>
     </>

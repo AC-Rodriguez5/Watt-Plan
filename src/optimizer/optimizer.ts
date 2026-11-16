@@ -9,7 +9,7 @@ import {
   type PlanMode,
 } from '@/types/energy';
 
-import { CO2_KG_PER_KWH, costForKwh, monthlyKwh } from './appliance-cost';
+import { CO2_KG_PER_KWH, costForKwh, monthlyKwh, type ApplianceUsage } from './appliance-cost';
 import { calibrate } from './bill-calibration';
 
 /** Cuts move in steps of this many hours a day, so the receipt shows tidy figures. */
@@ -81,6 +81,20 @@ export function buildBaseline(
     cost: items.reduce((sum, { cost }) => sum + cost, 0),
     items,
   };
+}
+
+/**
+ * One appliance's monthly kWh and cost, scaled exactly like `buildBaseline` scales it, so the add/edit
+ * sheet shows the figure the appliance list will show once it is saved. `ratePerKwh` is the rate used.
+ */
+export function estimateAppliance(
+  usage: ApplianceUsage,
+  bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>,
+  storedFactor: number,
+): { kwh: number; cost: number; ratePerKwh: number } {
+  const { ratePerKwh, isCalibrated } = calibrate([], bill.lastBillTotal, bill.lastBillKwh);
+  const kwh = monthlyKwh(usage) * (isCalibrated ? storedFactor : 1);
+  return { kwh, cost: costForKwh(kwh, ratePerKwh), ratePerKwh };
 }
 
 /**

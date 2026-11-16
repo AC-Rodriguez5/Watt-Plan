@@ -19,19 +19,23 @@ export function toChatReceiptProps(revision: PlanRevision, appliances: Appliance
   const lines = cuts.flatMap((cut) => {
     const appliance = appliances.find(({ id }) => id === cut.applianceId);
     if (!appliance) return [];
-    return { id: appliance.id, label: `${appliance.name} ${hours(cut.fromHoursPerDay)} → ${hours(cut.toHoursPerDay)}`, saving: cut.saving };
+    return {
+      id: appliance.id,
+      label: `${appliance.name} ${hours(cut.fromHoursPerDay)} → ${hours(cut.toHoursPerDay)} a day`,
+      saving: cut.saving,
+    };
   });
 
   const kept = isInitial
     ? []
     : revision.keptApplianceIds.flatMap((id) => {
         const appliance = appliances.find((candidate) => candidate.id === id);
-        return appliance ? { id, label: `${appliance.name} (${hours(appliance.hoursPerDay)} untouched)` } : [];
+        return appliance ? { id, label: `${appliance.name} ${hours(appliance.hoursPerDay)} a day` } : [];
       });
 
   return {
     title: isInitial ? 'INITIAL CUTS' : 'PLAN REVISION',
-    subtitle: isInitial ? undefined : 'Adjusted delta only',
+    subtitle: isInitial ? undefined : 'Changes only',
     revisionNumber: revision.number,
     lines,
     kept,

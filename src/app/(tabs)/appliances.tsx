@@ -1,16 +1,19 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { ApplianceCard } from '@/components/appliance-card';
 import { AppliancesEmptyState } from '@/components/appliances-empty-state';
 import { Icon } from '@/components/icon';
-import { colors, maxContentWidth, radii, shadows, spacing, typography, fontFamilies } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
 import { effectiveRatePerKwh } from '@/optimizer/appliance-cost';
-import { PLACEHOLDER_ESTIMATES } from '@/store/placeholder-estimates';
+import { applianceListItems } from '@/optimizer/appliance-list';
+import { oneHourTip } from '@/optimizer/home-summary';
 import { useAppStore } from '@/store/app-store';
 import type { AppliancePresetKey } from '@/utils/appliance-presets';
 import { formatPeso, formatWhole } from '@/utils/format';
+import { matchesQuery } from '@/utils/search';
 
 const QUICK_ADD: { label: string; preset: AppliancePresetKey }[] = [
   { label: 'Refrigerator', preset: 'refrigerator' },
@@ -26,6 +29,16 @@ export default function AppliancesScreen() {
   const billSettings = useAppStore((state) => state.billSettings);
   const baseline = useAppStore((state) => state.baseline);
   const isEmpty = appliances.length === 0;
+  const items = useMemo(() => applianceListItems(baseline), [baseline]);
+  const tip = useMemo(() => oneHourTip(baseline), [baseline]);
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const shownItems = items.filter(({ appliance }) => matchesQuery(appliance.name, query));
+
+  const closeSearch = () => {
+    setSearching(false);
+    setQuery('');
+  };
 
   /** Opens the add sheet empty, or pre-filled from a quick-add preset. */
   const openAddSheet = (preset?: AppliancePresetKey) =>
@@ -34,26 +47,51 @@ export default function AppliancesScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppHeader />
+      <AppHeader title="Appliances" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.content}>
-          <View style={styles.titleRow}>
-            <View style={styles.titleGroup}>
-              <Text style={styles.title}>My appliances</Text>
-              <View style={[styles.countBadge, isEmpty && styles.countBadgeEmpty]}>
-                <Text style={[styles.countText, isEmpty && styles.countTextEmpty]}>{appliances.length} items</Text>
+          {searching ? (
+            <View style={styles.titleRow}>
+              <View style={styles.searchField}>
+                <Icon name="search" size={20} color={colors.onSurfaceVariant} />
+                <TextInput
+                  accessibilityLabel="Search appliances"
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search appliances"
+                  placeholderTextColor={colors.outline}
+                  selectionColor={colors.primaryContainer}
+                  autoFocus
+                  autoCorrect={false}
+                  returnKeyType="search"
+                  style={styles.searchInput}
+                />
               </View>
-            </View>
-            <View style={styles.titleActions}>
-              <Pressable accessibilityRole="button" accessibilityLabel="Search appliances" style={styles.iconButton}>
-                <Icon name="search" size={22} color={colors.onSurfaceVariant} />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close search"
+                onPress={closeSearch}
+                style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}>
+                <Icon name="close" size={22} color={colors.onSurfaceVariant} />
               </Pressable>
-              <Pressable accessibilityRole="button" accessibilityLabel="Sort and filter" style={styles.iconButton}>
-                <Icon name="filter_list" size={22} color={colors.onSurfaceVariant} />
-              </Pressable>
             </View>
-          </View>
+          ) : (
+            <View style={styles.titleRow}>
+              <Text style={styles.count}>
+                {appliances.length} {appliances.length === 1 ? 'appliance' : 'appliances'}
+              </Text>
+              {!isEmpty && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Search appliances"
+                  onPress={() => setSearching(true)}
+                  style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}>
+                  <Icon name="search" size={22} color={colors.onSurfaceVariant} />
+                </Pressable>
+              )}
+            </View>
+          )}
 
           {isEmpty ? (
             <AppliancesEmptyState ratePerKwh={effectiveRatePerKwh(billSettings)} onAdd={openAddSheet} />
@@ -94,26 +132,31 @@ export default function AppliancesScreen() {
               </ScrollView>
 
               <View style={styles.cardList}>
-                {appliances.map((appliance) => (
+                {shownItems.map(({ appliance, cost, shareOfBill }) => (
                   <ApplianceCard
                     key={appliance.id}
                     appliance={appliance}
-                    estimate={PLACEHOLDER_ESTIMATES[appliance.id]}
+                    monthlyCost={cost}
+                    shareOfBill={shareOfBill}
                     onPress={() => openEditSheet(appliance.id)}
                   />
                 ))}
+                {shownItems.length === 0 && (
+                  <Text style={styles.noMatch}>No appliance matches &quot;{query.trim()}&quot;</Text>
+                )}
               </View>
 
-              <View style={styles.tipCard}>
-                <Icon name="tips_and_updates" size={22} color={colors.primary} />
-                <View style={styles.tipBody}>
-                  <Text style={styles.tipTitle}>Tip for hot afternoons</Text>
-                  <Text style={styles.tipText}>
-                    Running your stand fan alongside your inverter AC at 25°C delivers the same cooling sensation as 22°C
-                    while saving up to ₱320/month.
-                  </Text>
+              {tip && (
+                <View style={styles.tipCard}>
+                  <Icon name="tips_and_updates" size={22} color={colors.primary} />
+                  <View style={styles.tipBody}>
+                    <Text style={styles.tipTitle}>Saving tip</Text>
+                    <Text style={styles.tipText}>
+                      Cut {tip.applianceName} by 1 hour a day to save about {formatPeso(tip.saving)} a month.
+                    </Text>
+                  </View>
                 </View>
-              </View>
+              )}
             </>
           )}
         </View>
@@ -152,39 +195,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  titleGroup: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.sm,
-  },
-  title: {
-    ...typography.headlineSm,
+  count: {
+    ...typography.titleMd,
     color: colors.onSurface,
-    letterSpacing: -0.2,
-  },
-  countBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radii.full,
-    backgroundColor: colors.secondaryContainer,
-  },
-  countText: {
-    ...typography.labelSm,
-    fontFamily: fontFamilies.inter.semiBold,
-    color: colors.onSecondaryContainer,
-  },
-  countBadgeEmpty: {
-    backgroundColor: colors.surfaceContainerHigh,
-  },
-  countTextEmpty: {
-    ...typography.receiptLabel,
-    letterSpacing: 0,
-    color: colors.onSurfaceVariant,
-  },
-  titleActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
   },
   iconButton: {
     width: 48,
@@ -192,6 +205,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radii.full,
+  },
+  iconButtonPressed: {
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  searchField: {
+    flex: 1,
+    height: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceContainerLowest,
+    boxShadow: shadows.level1,
+  },
+  searchInput: {
+    ...typography.bodyMd,
+    flex: 1,
+    height: '100%',
+    paddingVertical: 0,
+    color: colors.onSurface,
+  },
+  noMatch: {
+    ...typography.bodyMd,
+    paddingVertical: spacing.lg,
+    textAlign: 'center',
+    color: colors.onSurfaceVariant,
   },
   ribbonWrap: {
     paddingHorizontal: spacing.margin,

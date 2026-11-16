@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '@/components/icon';
 import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
 
-/** Top app bar shared by the tab screens (design/screens/appliances.png). */
-export function AppHeader() {
+/** Top app bar shared by the tab screens. `title` is the tab's name, so the bar says where you are. */
+export function AppHeader({ title }: { title: string }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -14,7 +14,9 @@ export function AppHeader() {
       <View style={styles.bar}>
         <View style={styles.brand}>
           <Icon name="bolt" size={28} color={colors.primary} />
-          <Text style={styles.title}>Home</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            {title}
+          </Text>
         </View>
         <View style={styles.actions}>
           <Pressable

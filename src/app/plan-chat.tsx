@@ -1,4 +1,4 @@
-import { router, Stack } from 'expo-router';
+import { router } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useRef, useState } from 'react';
 import { FlatList, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
@@ -38,7 +38,6 @@ export default function PlanChatScreen() {
 
   return (
     <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={headerHeight} style={styles.screen}>
-      {assistantStatus === 'unavailable' && <Stack.Screen options={{ title: 'Change the Plan (AI Unavailable)' }} />}
       {plan && (
         <View style={styles.strip}>
           <ChatSummaryStrip plan={plan} />

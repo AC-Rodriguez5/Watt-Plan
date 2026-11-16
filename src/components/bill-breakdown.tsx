@@ -42,7 +42,7 @@ export function BillBreakdown({ values, errors, onChange }: BillBreakdownProps) 
           <Icon name="account_balance_wallet" size={20} color={colors.primary} />
           <View style={styles.triggerText}>
             <Text style={styles.title}>Break down the charges</Text>
-            <Text style={styles.subtitle}>Optional • Generation &amp; distribution</Text>
+            <Text style={styles.subtitle}>Optional</Text>
           </View>
         </View>
         <View style={[styles.chevron, expanded && styles.chevronOpen]}>
@@ -52,14 +52,6 @@ export function BillBreakdown({ values, errors, onChange }: BillBreakdownProps) 
 
       {expanded && (
         <View style={styles.body}>
-          <View style={styles.note}>
-            <Icon name="info" size={18} color={colors.primary} />
-            <Text style={styles.noteText}>
-              Helps Watt Plan separate fixed utility baseline fees from variable appliance power usage for truer
-              simulations.
-            </Text>
-          </View>
-
           {CHARGES.map(({ field, label }, index) => (
             <ChargeInput
               key={field}
@@ -72,7 +64,7 @@ export function BillBreakdown({ values, errors, onChange }: BillBreakdownProps) 
           ))}
 
           <View style={styles.verify}>
-            <Text style={styles.verifyLabel}>Itemized sum verification:</Text>
+            <Text style={styles.verifyLabel}>Charges add up to:</Text>
             <Text style={[styles.verifyValue, !matches && styles.verifyMismatch]}>
               {formatPesoExact(sum)}
               {matches ? ' ✓' : ''}
@@ -114,6 +106,7 @@ function ChargeInput({ label, value, share, error, onChangeText }: ChargeInputPr
               onChangeText(tidyAmount(value));
             }}
             keyboardType="decimal-pad"
+            maxLength={12}
             selectionColor={colors.primaryContainer}
             style={styles.chargeInput}
           />
@@ -176,19 +169,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
     paddingBottom: spacing.md,
-  },
-  note: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    padding: 10,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceContainerLow,
-  },
-  noteText: {
-    ...typography.labelSm,
-    flex: 1,
-    color: colors.onSurfaceVariant,
   },
   charge: {
     paddingHorizontal: 12,

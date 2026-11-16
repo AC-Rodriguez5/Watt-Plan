@@ -2,6 +2,8 @@ import { router } from 'expo-router';
 import type { AndroidSymbol } from 'expo-symbols';
 import { useState, type ReactNode } from 'react';
 import {
+  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
@@ -15,7 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { colors, fontFamilies, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
-import { effectiveRatePerKwh, monthlyCost, monthlyKwh } from '@/optimizer/appliance-cost';
+import { effectiveRatePerKwh } from '@/optimizer/appliance-cost';
+import { estimateAppliance } from '@/optimizer/optimizer';
 import { useAppStore } from '@/store/app-store';
 import type { Appliance, ApplianceCategory } from '@/types/energy';
 import {
@@ -25,7 +28,8 @@ import {
   type ApplianceFormErrors,
   type ApplianceFormValues,
 } from '@/utils/appliance-form';
-import { addFormValues, type AppliancePreset } from '@/utils/appliance-presets';
+import { applianceIcon } from '@/utils/appliance-icon';
+import { addFormValues, searchPresets, type AppliancePreset } from '@/utils/appliance-presets';
 import { formatKwh, formatPeso, formatRate, formatWhole } from '@/utils/format';
 
 /** In add mode, `preset` pre-fills the form. Mount a fresh sheet (new `key`) per open so state never carries over. */
@@ -48,31 +52,43 @@ const SEGMENT_ICONS: Record<'add' | 'edit', Record<ApplianceCategory, AndroidSym
 const EDIT_SEGMENT_TONES: Record<ApplianceCategory, { background: string; text: string }> = {
   essential: { background: colors.surfaceContainerHighest, text: colors.onSurface },
   flexible: { background: colors.secondaryContainer, text: colors.onSecondaryContainer },
-  luxury: { background: colors.errorContainer, text: colors.onErrorContainer },
+  luxury: { background: colors.alertContainer, text: colors.onAlertContainer },
 };
 
 const CATEGORY_DESCRIPTIONS: Record<ApplianceCategory, { label: string; text: string; icon: AndroidSymbol }> = {
   essential: {
     label: 'Essential:',
-    text: ' Critical for daily survival or hygiene. Watt Plan will try never to trim this.',
+    text: ' Must run, like the fridge. Cut last.',
     icon: 'verified_user',
   },
   flexible: {
     label: 'Flexible:',
-    text: ' Routine daily appliances with room for optimization (e.g. iron, fans).',
+    text: ' Daily use, like fans. Cut if needed.',
     icon: 'tune',
   },
   luxury: {
     label: 'Luxury:',
-    text: ' High-draw comfort loads (e.g. AC, water heater). Prioritized for cutbacks when exceeding budget.',
+    text: ' Comfort, like aircon. Cut first.',
     icon: 'electric_bolt',
   },
 };
 
 const EDIT_LUXURY_DESCRIPTION = {
-  label: 'Luxury appliances',
-  text: ' are prioritized for reduction first during bill spikes to keep your monthly electric bill within target.',
+  label: 'Luxury:',
+  text: ' Cut first to hit your target.',
 };
+
+/** The add sheet asks for an appliance in three short steps. The edit sheet shows everything at once. */
+const STEPS: { title: string; fields: ApplianceField[] }[] = [
+  { title: 'What is it', fields: ['name', 'watts'] },
+  { title: 'How you use it', fields: ['hoursPerDay', 'daysPerWeek'] },
+  { title: 'Priority', fields: ['minHoursPerDay'] },
+];
+
+/** The errors that belong to one step's fields. */
+function errorsFor(errors: ApplianceFormErrors, fields: ApplianceField[]): ApplianceFormErrors {
+  return Object.fromEntries(Object.entries(errors).filter(([field]) => fields.includes(field as ApplianceField)));
+}
 
 function initialValues(props: ApplianceSheetProps): ApplianceFormValues {
   if (props.mode === 'add') {
@@ -94,18 +110,27 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
   const insets = useSafeAreaInsets();
 
   const billSettings = useAppStore((state) => state.billSettings);
+  const calibrationFactor = useAppStore((state) => state.calibrationFactor);
   const addAppliance = useAppStore((state) => state.addAppliance);
   const updateAppliance = useAppStore((state) => state.updateAppliance);
   const removeAppliance = useAppStore((state) => state.removeAppliance);
 
   const [values, setValues] = useState<ApplianceFormValues>(() => initialValues(props));
   const [errors, setErrors] = useState<ApplianceFormErrors>({});
+  const [step, setStep] = useState(0);
+  const isAdd = mode === 'add';
+  const lastStep = STEPS.length - 1;
+  /** Hides the sections of other steps in the add sheet; they stay mounted so typed values are kept. */
+  const stepStyle = (index: number) => (isAdd && step !== index ? styles.hidden : undefined);
+  const suggestions = isAdd ? searchPresets(values.name) : [];
 
   const showFloor = values.category !== 'luxury';
-  const rate = effectiveRatePerKwh(billSettings);
   const usage = usageFromForm(values);
-  const kwh = usage ? monthlyKwh(usage) : null;
-  const cost = usage ? monthlyCost(usage, rate) : null;
+  // Matched to the bill the same way as the appliance list, so the cost doesn't jump after saving.
+  const estimate = usage ? estimateAppliance(usage, billSettings, calibrationFactor) : null;
+  const rate = effectiveRatePerKwh(billSettings);
+  const kwh = estimate?.kwh ?? null;
+  const cost = estimate?.cost ?? null;
 
   const setField = (field: ApplianceField, text: string) => {
     setValues((current) => ({ ...current, [field]: text }));
@@ -118,6 +143,9 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
     const result = validateApplianceForm(values);
     if (!result.ok) {
       setErrors(result.errors);
+      // In the add sheet, go back to the first step that has a problem so it is visible.
+      const firstBad = STEPS.findIndex(({ fields }) => Object.keys(errorsFor(result.errors, fields)).length > 0);
+      if (isAdd && firstBad >= 0 && firstBad !== step) goToStep(firstBad);
       return;
     }
     if (props.mode === 'add') {
@@ -128,10 +156,47 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
     close();
   };
 
+  /**
+   * Changes the add sheet's step. The keyboard closes first: the field being typed in is about to be
+   * hidden, and on Android a hidden field can keep the focus and swallow what is typed next.
+   */
+  const goToStep = (index: number) => {
+    Keyboard.dismiss();
+    setStep(index);
+  };
+
+  /** Moves to the next step once this step's fields are valid. */
+  const next = () => {
+    const result = validateApplianceForm(values);
+    const stepErrors = result.ok ? {} : errorsFor(result.errors, STEPS[step].fields);
+    setErrors(stepErrors);
+    if (Object.keys(stepErrors).length === 0) goToStep(step + 1);
+  };
+
+  const back = () => {
+    setErrors({});
+    goToStep(step - 1);
+  };
+
+  const applyPreset = (preset: AppliancePreset) => {
+    setValues(addFormValues(preset));
+    setErrors({});
+  };
+
   const remove = () => {
     if (props.mode !== 'edit') return;
-    removeAppliance(props.appliance.id);
-    close();
+    const { appliance } = props;
+    Alert.alert(`Delete ${appliance.name}?`, 'It will be removed from your list and your plan.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          removeAppliance(appliance.id);
+          close();
+        },
+      },
+    ]);
   };
 
   const description =
@@ -156,9 +221,6 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
           <View style={[styles.header, mode === 'add' ? styles.headerAdd : styles.headerEdit]}>
             <View style={styles.headerText}>
               <Text style={styles.title}>{mode === 'add' ? 'Add appliance' : 'Edit appliance'}</Text>
-              {mode === 'add' && (
-                <Text style={styles.subtitle}>Enter details to estimate monthly power and budget load</Text>
-              )}
             </View>
             <Pressable
               accessibilityRole="button"
@@ -168,6 +230,8 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
               <Icon name="close" size={24} color={colors.onSurfaceVariant} />
             </Pressable>
           </View>
+
+          {isAdd && <StepProgress step={step} />}
 
           {/* Edit: live monthly cost */}
           {mode === 'edit' && (
@@ -184,92 +248,90 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
           )}
 
           <View style={styles.form}>
-            {/* Name */}
-            <Field
-              label="Appliance name"
-              icon={mode === 'add' ? 'devices' : 'ac_unit'}
-              value={values.name}
-              onChangeText={(text) => setField('name', text)}
-              placeholder={mode === 'add' ? 'e.g. Stand Fan, Microwave' : 'e.g. Rice Cooker, Refrigerator'}
-              error={errors.name}
-              autoCapitalize="words"
-            />
-
-            {/* Watts */}
-            <View>
+            {/* Step 1: name (with preset suggestions) */}
+            <View style={stepStyle(0)}>
               <Field
-                label={mode === 'add' ? 'Power consumption' : 'Power rating'}
-                icon={mode === 'add' ? 'bolt' : undefined}
-                value={values.watts}
-                onChangeText={(text) => setField('watts', text)}
-                placeholder="e.g. 60"
-                numeric
-                suffix={
-                  mode === 'add' ? (
-                    <View style={styles.wattsPill}>
-                      <Text style={styles.wattsPillText}>Watts (W)</Text>
-                    </View>
-                  ) : (
-                    <Text style={styles.wattsUnit}>W</Text>
-                  )
-                }
-                error={errors.watts}
+                label="Appliance name"
+                icon={applianceIcon(values.name)}
+                value={values.name}
+                onChangeText={(text) => setField('name', text)}
+                placeholder="Stand Fan"
+                maxLength={40}
+                error={errors.name}
+                autoCapitalize="words"
               />
-              {!errors.watts && (
-                <Hint
-                  text={
-                    mode === 'add'
-                      ? 'Check the manufacturer sticker label on the back or bottom'
-                      : 'Check the energy sticker or back label'
-                  }
-                  icon="info"
-                />
+              {suggestions.length > 0 && (
+                <View style={styles.suggestions}>
+                  {suggestions.map(({ key, preset }) => (
+                    <Pressable
+                      key={key}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Use ${preset.name}`}
+                      onPress={() => applyPreset(preset)}
+                      style={({ pressed }) => [styles.suggestion, pressed && styles.suggestionPressed]}>
+                      <Icon name={applianceIcon(preset.name)} size={20} color={colors.primary} />
+                      <Text style={styles.suggestionName}>{preset.name}</Text>
+                      <Text style={styles.suggestionWatts}>{preset.watts} W</Text>
+                    </Pressable>
+                  ))}
+                </View>
               )}
             </View>
 
-            {/* Hours and days */}
-            <View>
+            {/* Step 1: watts */}
+            <View style={stepStyle(0)}>
+              <Field
+                label="Power"
+                icon={isAdd ? 'bolt' : undefined}
+                value={values.watts}
+                onChangeText={(text) => setField('watts', text)}
+                placeholder="60"
+                maxLength={6}
+                numeric
+                suffix={<Text style={styles.wattsUnit}>W</Text>}
+                error={errors.watts}
+              />
+              {!errors.watts && <Hint text="See the sticker on the back" icon="info" />}
+            </View>
+
+            {/* Step 2: hours and days */}
+            <View style={stepStyle(1)}>
               <View style={styles.row}>
                 <View style={styles.rowItem}>
                   <Field
-                    label={mode === 'add' ? 'Hours / day' : 'Usage per day'}
-                    icon={mode === 'add' ? 'schedule' : undefined}
+                    label="Hours a day"
+                    icon={isAdd ? 'schedule' : undefined}
                     value={values.hoursPerDay}
                     onChangeText={(text) => setField('hoursPerDay', text)}
-                    placeholder="e.g. 10"
+                    placeholder="8"
+                    maxLength={5}
                     numeric
-                    suffix={mode === 'edit' ? <Text style={styles.unit}>h / day</Text> : undefined}
+                    suffix={<Text style={styles.unit}>h/day</Text>}
                     error={errors.hoursPerDay}
                     compact
                   />
-                  {mode === 'edit' && !errors.hoursPerDay && <Hint text="Daily runtime" />}
                 </View>
                 <View style={styles.rowItem}>
                   <Field
-                    label={mode === 'add' ? 'Days / week' : 'Days per week'}
-                    icon={mode === 'add' ? 'calendar_month' : undefined}
+                    label="Days a week"
+                    icon={isAdd ? 'calendar_month' : undefined}
                     value={values.daysPerWeek}
                     onChangeText={(text) => setField('daysPerWeek', text)}
+                    placeholder="7"
+                    maxLength={1}
                     numeric
-                    suffix={mode === 'edit' ? <Text style={styles.unit}>days</Text> : undefined}
+                    suffix={<Text style={styles.unit}>days</Text>}
                     error={errors.daysPerWeek}
                     compact
                   />
-                  {mode === 'edit' && !errors.daysPerWeek && (
-                    <Hint text={`Usually ${values.daysPerWeek.trim() || '7'} days`} />
-                  )}
                 </View>
               </View>
-              {mode === 'add' && <Hint text="Days per week active (1 to 7)" />}
             </View>
 
-            {/* Category */}
-            <View style={styles.categoryBlock}>
+            {/* Step 3: category */}
+            <View style={[styles.categoryBlock, stepStyle(2)]}>
               <View style={styles.categoryHeader}>
-                <Text style={styles.categoryTitle}>{mode === 'add' ? 'Appliance category' : 'Household priority tier'}</Text>
-                <Text style={mode === 'add' ? styles.categoryAside : styles.categoryAsideEdit}>
-                  {mode === 'add' ? 'Budget priority' : 'Watt Plan optimizer'}
-                </Text>
+                <Text style={styles.categoryTitle}>Category</Text>
               </View>
 
               <View
@@ -310,7 +372,7 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
               </View>
 
               <View style={[styles.banner, luxuryEdit && styles.bannerLuxury]}>
-                <Icon name={descriptionIcon} size={luxuryEdit ? 20 : 18} color={luxuryEdit ? colors.error : colors.secondary} />
+                <Icon name={descriptionIcon} size={luxuryEdit ? 20 : 18} color={luxuryEdit ? colors.alert : colors.secondary} />
                 <Text style={styles.bannerText}>
                   <Text style={styles.bannerStrong}>{description.label}</Text>
                   {description.text}
@@ -321,32 +383,28 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
             {/* Lowest hours: essential and flexible only */}
             {showFloor &&
               (mode === 'add' ? (
-                <View>
+                <View style={stepStyle(2)}>
                   <Field
-                    label="Lowest hours per day you can live with"
+                    label="Minimum hours a day"
                     icon="health_and_safety"
                     iconColor={colors.tertiary}
                     value={values.minHoursPerDay}
                     onChangeText={(text) => setField('minHoursPerDay', text)}
-                    placeholder="e.g. 6"
+                    placeholder="4"
+                    maxLength={5}
                     numeric
-                    suffix={<Text style={styles.floorUnit}>hrs/day</Text>}
+                    suffix={<Text style={styles.unit}>h/day</Text>}
                     error={errors.minHoursPerDay}
                   />
                   {!errors.minHoursPerDay && (
-                    <Hint
-                      text="Safety buffer: Plan will never reduce this appliance below these hours."
-                      icon="lock"
-                      tone="positive"
-                    />
+                    <Hint text="The plan never goes below this." icon="lock" tone="positive" />
                   )}
                 </View>
               ) : (
                 <View style={styles.floorCard}>
                   <View style={styles.floorTop}>
                     <View style={styles.floorTitles}>
-                      <Text style={styles.floorTitle}>Emergency budget floor</Text>
-                      <Text style={styles.fieldLabel}>Min. hours you can accept</Text>
+                      <Text style={styles.floorTitle}>Minimum hours a day</Text>
                     </View>
                     <View style={[styles.floorInputBox, errors.minHoursPerDay && styles.floorInputBoxError]}>
                       <TextInput
@@ -355,26 +413,26 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
                         onChangeText={(text) => setField('minHoursPerDay', text)}
                         keyboardType="decimal-pad"
                         placeholder="0"
+                        maxLength={5}
                         placeholderTextColor={colors.outline}
                         selectionColor={colors.primaryContainer}
                         style={styles.floorInput}
                       />
-                      <Text style={styles.unit}>h / day</Text>
+                      <Text style={styles.unit}>h/day</Text>
                     </View>
                   </View>
                   {errors.minHoursPerDay ? (
                     <Text style={styles.errorText}>{errors.minHoursPerDay}</Text>
                   ) : (
                     <Text style={styles.fieldLabel}>
-                      When automatic bill trimming runs, Watt Plan will never suggest cutting{' '}
-                      {values.name.trim() || 'this appliance'} below {floorHours} hours.
+                      The plan never goes below {floorHours} h.
                     </Text>
                   )}
                 </View>
               ))}
 
-            {/* Add: live run cost */}
-            {mode === 'add' && (
+            {/* Add: live run cost, once the hours are being entered */}
+            {isAdd && step > 0 && (
               <View style={styles.runCost}>
                 <View style={styles.runCostTop}>
                   <Text style={styles.runCostLabel}>ESTIMATED RUN COST</Text>
@@ -395,20 +453,20 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
             )}
 
             {/* Buttons */}
-            {mode === 'add' ? (
+            {isAdd ? (
               <View style={styles.actionsAdd}>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={close}
+                  onPress={step === 0 ? close : back}
                   style={({ pressed }) => [styles.textButton, styles.cancelAdd, pressed && styles.textButtonPressed]}>
-                  <Text style={styles.textButtonLabel}>Cancel</Text>
+                  <Text style={styles.textButtonLabel}>{step === 0 ? 'Cancel' : 'Back'}</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={save}
+                  onPress={step === lastStep ? save : next}
                   style={({ pressed }) => [styles.saveAdd, pressed && styles.savePressed]}>
-                  <Icon name="save" size={20} color={colors.onPrimary} />
-                  <Text style={styles.saveLabel}>Save</Text>
+                  <Icon name={step === lastStep ? 'save' : 'arrow_forward'} size={20} color={colors.onPrimary} />
+                  <Text style={styles.saveLabel}>{step === lastStep ? 'Save' : 'Next'}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -424,7 +482,7 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
                   <Pressable
                     accessibilityRole="button"
                     onPress={remove}
-                    style={({ pressed }) => [styles.secondaryButton, pressed && styles.deletePressed]}>
+                    style={({ pressed }) => [styles.secondaryButton, styles.deleteButton, pressed && styles.deletePressed]}>
                     <Icon name="delete" size={20} color={colors.error} />
                     <Text style={[styles.textButtonLabel, { color: colors.error }]}>Delete</Text>
                   </Pressable>
@@ -455,6 +513,8 @@ type FieldProps = {
   icon?: AndroidSymbol;
   iconColor?: string;
   placeholder?: string;
+  /** Most characters the field accepts, so a typo can't run past a sane value (e.g. 1 digit for days). */
+  maxLength?: number;
   /** Numbers render in the mono face and open the decimal keypad. */
   numeric?: boolean;
   suffix?: ReactNode;
@@ -472,6 +532,7 @@ function Field({
   icon,
   iconColor = colors.onSurfaceVariant,
   placeholder,
+  maxLength,
   numeric,
   suffix,
   error,
@@ -505,6 +566,7 @@ function Field({
             autoCapitalize={autoCapitalize}
             autoCorrect={false}
             placeholder={placeholder}
+            maxLength={maxLength}
             placeholderTextColor={colors.outline}
             selectionColor={colors.primaryContainer}
             style={[styles.input, numeric ? styles.inputNumeric : styles.inputText]}
@@ -513,6 +575,39 @@ function Field({
         </View>
       </View>
       {!!error && <Text style={styles.errorText}>{error}</Text>}
+    </View>
+  );
+}
+
+/** Numbered dots joined by a line: done steps show a check, the current one is filled, later ones are pale. */
+function StepProgress({ step }: { step: number }) {
+  const { title } = STEPS[step];
+  return (
+    <View
+      style={styles.progress}
+      accessible
+      accessibilityLabel={`Step ${step + 1} of ${STEPS.length}: ${title}`}>
+      <View style={styles.progressDots}>
+        {STEPS.map((_, index) => {
+          const done = index < step;
+          const current = index === step;
+          return (
+            <View key={index} style={[styles.progressItem, index > 0 && styles.progressItemGrow]}>
+              {index > 0 && <View style={[styles.progressLine, index <= step && styles.progressLineDone]} />}
+              <View style={[styles.progressDot, (done || current) && styles.progressDotActive]}>
+                {done ? (
+                  <Icon name="check" size={16} color={colors.onPrimary} />
+                ) : (
+                  <Text style={[styles.progressNumber, current && styles.progressNumberActive]}>{index + 1}</Text>
+                )}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+      <Text style={styles.progressLabel}>
+        Step {step + 1} of {STEPS.length} · {title}
+      </Text>
     </View>
   );
 }
@@ -578,11 +673,6 @@ const styles = StyleSheet.create({
     ...typography.headlineSm,
     color: colors.onSurface,
   },
-  subtitle: {
-    ...typography.labelSm,
-    color: colors.onSurfaceVariant,
-    marginTop: 2,
-  },
   closeButton: {
     width: 48,
     height: 48,
@@ -602,7 +692,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
     padding: 14,
-    marginBottom: 20,
+    marginBottom: spacing.lg,
     borderRadius: radii.lg,
     backgroundColor: colors.surfaceContainerLow,
   },
@@ -630,8 +720,88 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
 
+  // Groups sit 24 apart, and the buttons 32 below the last group (24 + their 8 top padding).
   form: {
-    gap: 20,
+    gap: spacing.lg,
+  },
+  hidden: {
+    display: 'none',
+  },
+
+  // Add: step progress
+  progress: {
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  progressDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressItemGrow: {
+    flex: 1,
+  },
+  progressLine: {
+    flex: 1,
+    height: 3,
+    marginHorizontal: spacing.xs,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  progressLineDone: {
+    backgroundColor: colors.primaryContainer,
+  },
+  progressDot: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  progressDotActive: {
+    backgroundColor: colors.primaryContainer,
+  },
+  progressNumber: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+  },
+  progressNumberActive: {
+    color: colors.onPrimary,
+  },
+  progressLabel: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+  },
+
+  // Add: preset suggestions under the name
+  suggestions: {
+    marginTop: spacing.sm,
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  suggestion: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: spacing.md,
+  },
+  suggestionPressed: {
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  suggestionName: {
+    ...typography.bodyMd,
+    flex: 1,
+    color: colors.onSurface,
+  },
+  suggestionWatts: {
+    ...typography.receiptLabel,
+    color: colors.onSurfaceVariant,
   },
 
   // Fields
@@ -697,16 +867,6 @@ const styles = StyleSheet.create({
     ...typography.labelSm,
     flexShrink: 1,
   },
-  wattsPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radii.md,
-    backgroundColor: colors.surfaceContainer,
-  },
-  wattsPillText: {
-    ...typography.receiptLabel,
-    color: colors.onSurfaceVariant,
-  },
   wattsUnit: {
     ...typography.receiptNumericMd,
     fontFamily: fontFamilies.mono.bold,
@@ -715,10 +875,6 @@ const styles = StyleSheet.create({
   },
   unit: {
     ...typography.labelSm,
-    color: colors.onSurfaceVariant,
-  },
-  floorUnit: {
-    ...typography.receiptLabel,
     color: colors.onSurfaceVariant,
   },
   row: {
@@ -735,22 +891,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   categoryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.xs,
   },
   categoryTitle: {
     ...typography.labelMd,
     color: colors.onSurface,
-  },
-  categoryAside: {
-    ...typography.receiptLabel,
-    color: colors.secondary,
-  },
-  categoryAsideEdit: {
-    ...typography.labelSm,
-    color: colors.onSurfaceVariant,
   },
   segments: {
     flexDirection: 'row',
@@ -794,7 +939,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLow,
   },
   bannerLuxury: {
-    backgroundColor: `${colors.errorContainer}4d`,
+    backgroundColor: colors.alertContainer,
   },
   bannerText: {
     ...typography.labelSm,
@@ -918,7 +1063,7 @@ const styles = StyleSheet.create({
   },
   actionsEdit: {
     gap: 10,
-    paddingTop: 12,
+    paddingTop: spacing.sm,
   },
   secondaryRow: {
     flexDirection: 'row',
@@ -951,8 +1096,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radii.full,
   },
+  // Delete is the only red button: red means destructive.
+  deleteButton: {
+    backgroundColor: `${colors.errorContainer}99`,
+  },
   deletePressed: {
-    backgroundColor: `${colors.errorContainer}66`,
+    backgroundColor: colors.errorContainer,
   },
   saveAdd: {
     height: 48,

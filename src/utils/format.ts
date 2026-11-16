@@ -38,14 +38,25 @@ export function formatPesoExact(value: number): string {
   return `${value < 0 ? '-' : ''}₱${formatAmount(Math.abs(value))}`;
 }
 
+/** 3412.67 -> { whole: "₱3,412", cents: "67" }, for layouts that draw the centavos smaller */
+export function splitPeso(value: number): { whole: string; cents: string } {
+  const [whole, cents] = formatAmount(Math.abs(value)).split('.');
+  return { whole: `${value < 0 ? '-' : ''}₱${whole}`, cents };
+}
+
+/** 0.4567 -> "45.7%" */
+export function formatPercent(share: number): string {
+  return `${(share * 100).toFixed(1)}%`;
+}
+
 /** 1050 -> "-₱1,050" (shows an amount as a deduction) */
 export function formatPesoCut(value: number): string {
   return `-₱${groupThousands(value)}`;
 }
 
-/** 4.5 -> "4.5 h" */
+/** 4.5 -> "4.5 h", 8 -> "8 h" */
 export function formatHours(value: number): string {
-  return `${value.toFixed(1)} h`;
+  return `${Number(value.toFixed(1))} h`;
 }
 
 /** A timestamp as "10:14 AM" (device local time). */

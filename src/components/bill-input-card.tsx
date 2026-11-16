@@ -12,6 +12,11 @@ type BillInputCardProps = {
   /** Peso sign drawn before the value. */
   prefix?: string;
   placeholder: string;
+  /**
+   * Most characters accepted, so the value can't run past a sane amount. Count the commas and
+   * centavos the field formats in ("9,999,999.99" is 12): Android also cuts values set by the app.
+   */
+  maxLength?: number;
   /** Pill or icon drawn after the value. */
   trailing?: ReactNode;
   /** Helper line under the field. Replaced by `error` when there is one. */
@@ -28,6 +33,7 @@ export function BillInputCard({
   onBlur,
   prefix,
   placeholder,
+  maxLength,
   trailing,
   helper,
   helperIcon,
@@ -51,6 +57,7 @@ export function BillInputCard({
           }}
           keyboardType="decimal-pad"
           placeholder={placeholder}
+          maxLength={maxLength}
           placeholderTextColor={colors.outlineVariant}
           selectionColor={colors.primaryContainer}
           style={styles.input}
