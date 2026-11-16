@@ -3,26 +3,28 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CategoryChip } from '@/components/category-chip';
 import { Icon } from '@/components/icon';
 import { categoryColors, colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
-import type { ApplianceDetailTone, PlaceholderEstimate } from '@/store/placeholder-estimates';
 import type { Appliance } from '@/types/energy';
 import { applianceIcon } from '@/utils/appliance-icon';
-import { formatPeso } from '@/utils/format';
-
-const DETAIL_COLORS: Record<ApplianceDetailTone, string> = {
-  neutral: colors.onSurfaceVariant,
-  positive: colors.tertiary,
-  warning: colors.error,
-};
+import { formatPercent, formatPeso } from '@/utils/format';
 
 type ApplianceCardProps = {
   appliance: Appliance;
-  estimate?: PlaceholderEstimate;
+  /** Pesos per month, from the optimizer's baseline. */
+  monthlyCost: number;
+  /** Share of the household's bill, 0 to 1. Set only on the costliest appliance, which is flagged in orange. */
+  shareOfBill: number | null;
   onPress: () => void;
 };
 
-export function ApplianceCard({ appliance, estimate, onPress }: ApplianceCardProps) {
+export function ApplianceCard({ appliance, monthlyCost, shareOfBill, onPress }: ApplianceCardProps) {
   const palette = categoryColors[appliance.category];
-  const detail = estimate?.detail ?? (appliance.note ? { text: appliance.note, tone: 'neutral' as const } : undefined);
+  // The costliest appliance shows its share of the bill in place of its note.
+  const detail =
+    shareOfBill !== null
+      ? { text: `${formatPercent(shareOfBill)} of bill`, warning: true }
+      : appliance.note
+        ? { text: appliance.note, warning: false }
+        : undefined;
   const days = appliance.daysPerWeek;
 
   return (
@@ -34,7 +36,7 @@ export function ApplianceCard({ appliance, estimate, onPress }: ApplianceCardPro
       <View style={styles.topRow}>
         <View style={styles.identity}>
           <View style={[styles.iconBadge, { backgroundColor: palette.iconBackground }]}>
-            <Icon name={applianceIcon(appliance.id)} size={24} color={palette.iconTint} />
+            <Icon name={applianceIcon(appliance.name)} size={24} color={palette.iconTint} />
           </View>
           <View style={styles.titleColumn}>
             <View style={styles.nameRow}>
@@ -47,7 +49,7 @@ export function ApplianceCard({ appliance, estimate, onPress }: ApplianceCardPro
           </View>
         </View>
         <View style={styles.costColumn}>
-          <Text style={styles.cost}>{formatPeso(estimate?.monthlyCost ?? 0)}</Text>
+          <Text style={styles.cost}>{formatPeso(monthlyCost)}</Text>
           <Text style={styles.costUnit}>/ month</Text>
         </View>
       </View>
@@ -60,8 +62,10 @@ export function ApplianceCard({ appliance, estimate, onPress }: ApplianceCardPro
           </View>
           {detail && (
             <View style={styles.detail}>
-              {detail.tone === 'warning' && <Icon name="local_fire_department" size={14} color={DETAIL_COLORS.warning} />}
-              <Text style={[styles.detailText, { color: DETAIL_COLORS[detail.tone] }]}>{detail.text}</Text>
+              {detail.warning && <Icon name="local_fire_department" size={14} color={colors.alert} />}
+              <Text style={[styles.detailText, { color: detail.warning ? colors.alertAction : colors.onSurfaceVariant }]}>
+                {detail.text}
+              </Text>
             </View>
           )}
         </View>

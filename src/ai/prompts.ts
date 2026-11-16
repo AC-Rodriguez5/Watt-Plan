@@ -73,7 +73,7 @@ export function buildInterpretInput({ message, target, appliances, problem }: In
 }
 
 const EXPLAIN_RULES = `Rules:
-- Write 2 to 3 short sentences. Plain text only: no markdown, no lists, no greeting, no emoji.
+- Write 1 or 2 short sentences, under 30 words in all. Plain text only: no markdown, no lists, no greeting, no emoji.
 - Reply in the same language as the user's message: English, or Taglish if they wrote in Taglish.
 - Use ONLY the numbers that appear in the JSON facts or in the user's message. Never calculate, add, subtract, round, convert or estimate a number yourself. If a number you want is not in the facts, leave it out.
 - Write pesos with the ₱ sign. Refer to appliances by name.

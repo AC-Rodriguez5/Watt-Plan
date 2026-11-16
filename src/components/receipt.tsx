@@ -16,7 +16,7 @@ export type ReceiptProps = {
 
 const STAMP: Record<PlanStatus, { label: string; color: string }> = {
   feasible: { label: 'TARGET FEASIBLE', color: colors.tertiary },
-  'not-reachable': { label: 'TARGET NOT REACHABLE', color: colors.alert },
+  'not-reachable': { label: 'TARGET NOT REACHABLE', color: colors.error },
 };
 
 const TOOTH_WIDTH = 6;

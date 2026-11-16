@@ -59,7 +59,7 @@ export default function PlanScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppHeader />
+      <AppHeader title="Plan" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           {!isCalibrated && <MissingBillBanner onEnterBill={() => router.push('/bill-settings')} />}
@@ -74,23 +74,6 @@ export default function PlanScreen() {
             />
           ) : (
             <>
-              <View style={styles.subHeader}>
-                <View style={styles.subHeaderTitle}>
-                  <View style={styles.subHeaderBadge}>
-                    <Icon name="receipt_long" size={18} color={colors.onSecondaryContainer} />
-                  </View>
-                  <Text style={styles.subHeaderLabel}>Billing Optimization</Text>
-                </View>
-                <View style={styles.subHeaderActions}>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Share plan" style={styles.iconButton}>
-                    <Icon name="share" size={24} color={colors.onSurfaceVariant} />
-                  </Pressable>
-                  <Pressable accessibilityRole="button" accessibilityLabel="Plan information" style={styles.iconButton}>
-                    <Icon name="info" size={24} color={colors.onSurfaceVariant} />
-                  </Pressable>
-                </View>
-              </View>
-
               {target !== null && <PlanTargetCard target={target} onEdit={editTarget} />}
 
               <PlanRateCard ratePerKwh={ratePerKwh} source={rateSource} onEdit={() => router.push('/bill-settings')} />
@@ -152,10 +135,6 @@ export default function PlanScreen() {
                 <Icon name="tune" size={22} color={colors.onPrimary} />
                 <Text style={styles.buttonLabel}>Change the plan</Text>
               </Pressable>
-              <View style={styles.caption}>
-                <Icon name="lock_clock" size={16} color={colors.tertiary} />
-                <Text style={styles.captionText}>Locks in daily schedule reminders &amp; push triggers</Text>
-              </View>
             </View>
           )}
         </View>
@@ -190,43 +169,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
 
-  // "Billing Optimization" bar
-  subHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  subHeaderTitle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  subHeaderBadge: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.full,
-    backgroundColor: colors.secondaryContainer,
-  },
-  subHeaderLabel: {
-    ...typography.labelMd,
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    color: colors.onSurfaceVariant,
-  },
-  subHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radii.full,
-  },
-
   // Change the plan
   cta: {
     alignItems: 'center',
@@ -250,16 +192,6 @@ const styles = StyleSheet.create({
   buttonLabel: {
     ...typography.labelMd,
     color: colors.onPrimary,
-  },
-  caption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: spacing.xs,
-  },
-  captionText: {
-    ...typography.labelSm,
-    color: colors.onSurfaceVariant,
   },
 
   // Use this plan / Change my target (target not reachable)

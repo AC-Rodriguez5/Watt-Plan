@@ -5,32 +5,30 @@ import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/con
 import type { Plan } from '@/types/energy';
 import { formatPeso } from '@/utils/format';
 
-/** Pinned "Projected ₱1,985 · Target ₱2,000 · ON TRACK" pill at the top of Plan chat. Reads the shared plan. */
+/**
+ * Pinned "₱1,985 of ₱2,000 target · ON TRACK" pill at the top of Plan chat. Reads the shared plan.
+ * Numbers come first, so a narrow screen cuts the words, never the figures.
+ */
 export function ChatSummaryStrip({ plan }: { plan: Plan }) {
   const onTrack = plan.status === 'feasible';
+  const projected = formatPeso(plan.projectedBill);
+  const target = formatPeso(plan.target);
+  const status = onTrack ? 'ON TRACK' : 'OVER TARGET';
+
   return (
     <View style={styles.wrapper}>
-      <View style={styles.strip}>
-        <View style={styles.left}>
-          <View style={[styles.badge, { backgroundColor: onTrack ? colors.tertiaryContainer : colors.alert }]}>
-            <Icon name={onTrack ? 'check' : 'priority_high'} size={16} color={colors.onTertiaryContainer} />
-          </View>
-          <View style={styles.figures}>
-            <Text style={styles.projected} numberOfLines={1}>
-              Projected <Text style={styles.projectedAmount}>{formatPeso(plan.projectedBill)}</Text>
-            </Text>
-            <Text style={styles.dot}>·</Text>
-            <Text style={styles.target} numberOfLines={1}>
-              Target {formatPeso(plan.target)}
-            </Text>
-          </View>
+      <View
+        style={styles.strip}
+        accessible
+        accessibilityLabel={`Projected bill ${projected}, target ${target}, ${onTrack ? 'on track' : 'over target'}`}>
+        <View style={[styles.badge, { backgroundColor: onTrack ? colors.tertiaryContainer : colors.error }]}>
+          <Icon name={onTrack ? 'check' : 'priority_high'} size={16} color={onTrack ? colors.onTertiaryContainer : colors.onError} />
         </View>
-        <View style={styles.right}>
-          <Text style={[styles.status, { color: onTrack ? colors.tertiary : colors.alert }]}>
-            {onTrack ? 'ON TRACK' : 'OVER TARGET'}
-          </Text>
-          <Icon name="keyboard_arrow_down" size={20} color={colors.onSurfaceVariant} />
-        </View>
+        <Text style={styles.figures} numberOfLines={1}>
+          <Text style={styles.projected}>{projected}</Text>
+          <Text style={styles.of}> of {target} target</Text>
+        </Text>
+        <Text style={[styles.status, { color: onTrack ? colors.tertiary : colors.error }]}>{status}</Text>
       </View>
     </View>
   );
@@ -46,19 +44,11 @@ const styles = StyleSheet.create({
     height: 48,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     borderRadius: radii.full,
     backgroundColor: colors.surfaceContainer,
     boxShadow: shadows.level1,
-  },
-  left: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
   },
   badge: {
     width: 24,
@@ -70,34 +60,20 @@ const styles = StyleSheet.create({
   figures: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
   },
   projected: {
-    flexShrink: 1,
     ...typography.labelMd,
-    color: colors.onSurface,
-  },
-  projectedAmount: {
     fontFamily: fontFamilies.mono.bold,
     color: colors.primary,
   },
-  dot: {
-    color: colors.outline,
-  },
-  target: {
-    flexShrink: 1,
+  of: {
     ...typography.labelMd,
+    fontFamily: fontFamilies.inter.medium,
     color: colors.onSurfaceVariant,
-  },
-  right: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
   },
   status: {
     ...typography.labelSm,
+    fontFamily: fontFamilies.inter.semiBold,
     letterSpacing: 0.6,
   },
 });

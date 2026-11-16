@@ -28,10 +28,6 @@ export function PlanTargetCard({ target, onEdit }: PlanTargetCardProps) {
         <Text style={styles.amount}>{formatPeso(target)}</Text>
         <Text style={styles.unit}>/ month</Text>
       </View>
-      <View style={styles.hintRow}>
-        <Icon name="touch_app" size={16} color={colors.primary} />
-        <Text style={styles.hint}>Tap to edit target threshold</Text>
-      </View>
     </Pressable>
   );
 }
@@ -74,15 +70,5 @@ const styles = StyleSheet.create({
   unit: {
     ...typography.bodyMd,
     color: colors.onSurfaceVariant,
-  },
-  hintRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  hint: {
-    ...typography.labelSm,
-    fontFamily: typography.labelMd.fontFamily,
-    color: colors.primary,
   },
 });

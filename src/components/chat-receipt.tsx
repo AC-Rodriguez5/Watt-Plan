@@ -8,12 +8,12 @@ import { formatPeso, formatPesoCut } from '@/utils/format';
 
 export type ChatReceiptProps = {
   title: string;
-  /** Line under the title on the current receipt, e.g. "Adjusted delta only". */
+  /** Line under the title on the current receipt, e.g. "Changes only". */
   subtitle?: string;
   revisionNumber: number;
-  /** Changed appliances, e.g. label "Aircon 6 h → 4 h" and the pesos it saves per month. */
+  /** Changed appliances, e.g. label "Aircon 6 h → 4 h a day" and the pesos it saves per month. */
   lines: { id: string; label: string; saving: number }[];
-  /** Appliances the user asked to leave alone, e.g. label "Stand Fan (14 h untouched)". */
+  /** Appliances the user asked to leave alone, e.g. label "Stand Fan 14 h a day", printed with "Kept". */
   kept: { id: string; label: string }[];
   status: PlanStatus;
   projectedBill: number;
@@ -25,7 +25,7 @@ type Variant = 'current' | 'earlier';
 
 const STAMP: Record<PlanStatus, { label: string; icon: 'verified' | 'warning'; background: string; color: string }> = {
   feasible: { label: 'TARGET MET', icon: 'verified', background: colors.tertiaryFixed, color: colors.onTertiaryFixed },
-  'not-reachable': { label: 'OVER TARGET', icon: 'warning', background: colors.alertContainer, color: colors.alert },
+  'not-reachable': { label: 'OVER TARGET', icon: 'warning', background: colors.errorContainer, color: colors.onErrorContainer },
 };
 
 const DOTS = '. '.repeat(60);
@@ -65,7 +65,7 @@ function CurrentReceipt({ title, subtitle, lines, kept, status, projectedBill, m
                 <Icon name="lock" size={14} color={colors.tertiary} />
                 <Text style={styles.keptText}>{line.label}</Text>
               </View>
-              <Text style={styles.keptText}>₱0 change</Text>
+              <Text style={styles.keptText}>Kept</Text>
             </View>
           ))}
         </View>
@@ -79,8 +79,8 @@ function CurrentReceipt({ title, subtitle, lines, kept, status, projectedBill, m
           <View style={styles.projectedValue}>
             <Text style={styles.projectedAmount}>{formatPeso(projectedBill)}</Text>
             <View style={styles.marginRow}>
-              <Icon name={onTarget ? 'savings' : 'warning'} size={12} color={onTarget ? colors.tertiary : colors.alert} />
-              <Text style={[styles.marginText, { color: onTarget ? colors.tertiary : colors.alert }]}>
+              <Icon name={onTarget ? 'savings' : 'warning'} size={12} color={onTarget ? colors.tertiary : colors.error} />
+              <Text style={[styles.marginText, { color: onTarget ? colors.tertiary : colors.error }]}>
                 {formatPeso(Math.abs(margin))} {onTarget ? 'below' : 'over'} target
               </Text>
             </View>
@@ -194,11 +194,12 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: colors.onSurface,
   },
+  // A cut is money saved, so it is green.
   currentAmount: {
     fontFamily: MONO_BOLD,
     fontSize: 14,
     lineHeight: 20,
-    color: colors.error,
+    color: colors.tertiary,
   },
   keptLabel: {
     flexShrink: 1,
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
     fontFamily: MONO_MEDIUM,
     fontSize: 13,
     lineHeight: 18,
-    color: colors.error,
+    color: colors.tertiary,
   },
   earlierDashes: {
     marginVertical: spacing.sm,

@@ -19,16 +19,10 @@ export function PlanStatusCard({ kwhSaved, co2SavedKg }: PlanStatusCardProps) {
         <Icon name="verified" size={24} color={colors.tertiary} />
       </View>
       <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>Target reached</Text>
-          <View style={styles.pill}>
-            <Text style={styles.pillText}>Feasible</Text>
-          </View>
-        </View>
+        <Text style={styles.title}>Target reached</Text>
         <Text style={styles.message}>
-          <Text style={styles.strong}>{formatWhole(kwhSaved)} kWh</Text> and{' '}
-          <Text style={styles.strong}>{formatWhole(co2SavedKg)} kg CO₂</Text> saved this cycle while preserving core
-          appliance schedules.
+          Saves <Text style={styles.strong}>{formatWhole(kwhSaved)} kWh</Text> and{' '}
+          <Text style={styles.strong}>{formatWhole(co2SavedKg)} kg CO₂</Text> a month.
         </Text>
       </View>
     </View>
@@ -57,27 +51,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
   title: {
     ...typography.titleMd,
     fontFamily: fontFamilies.inter.bold,
     color: colors.tertiary,
-  },
-  pill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radii.full,
-    backgroundColor: colors.tertiaryFixed,
-  },
-  pillText: {
-    ...typography.labelSm,
-    fontFamily: fontFamilies.inter.bold,
-    fontSize: 11,
-    color: colors.onTertiaryFixedVariant,
   },
   message: {
     ...typography.bodyMd,

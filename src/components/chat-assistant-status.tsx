@@ -64,7 +64,7 @@ export function AssistantThinking() {
           <TypingDot delay={150} />
           <TypingDot delay={300} />
         </View>
-        <Text style={styles.thinkingCopy}>Adjusting the schedule cuts to hold your target…</Text>
+        <Text style={styles.thinkingCopy}>Updating your plan…</Text>
         <View style={styles.skeletons}>
           <SkeletonBar width="80%" delay={0} />
           <SkeletonBar width="60%" delay={150} />
@@ -99,7 +99,7 @@ export function AssistantUnavailable({ sentAt, onRetry, onGoToAppliances }: Assi
         <View style={styles.offlineMessage}>
           <Icon name="error" size={22} color={colors.error} />
           <Text style={styles.offlineCopy}>
-            Can&apos;t reach the assistant right now. You can still edit hours on the Appliances tab.
+            Can&apos;t reach the assistant. You can still edit hours in Appliances.
           </Text>
         </View>
         <View style={styles.actions}>

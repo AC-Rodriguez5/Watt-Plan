@@ -26,8 +26,7 @@ export function BillCalibrationCard({ calibration }: { calibration: Calibration 
             <Icon name="electric_bolt" size={18} color={colors.onPrimaryContainer} />
           </View>
           <View style={styles.headerText}>
-            <Text style={styles.title}>CALIBRATION RATE</Text>
-            <Text style={styles.subtitle}>Reconciled household multiplier</Text>
+            <Text style={styles.title}>YOUR RATE</Text>
           </View>
         </View>
         {isCalibrated && (
@@ -40,7 +39,7 @@ export function BillCalibrationCard({ calibration }: { calibration: Calibration 
 
       <View style={styles.rateBox}>
         <View>
-          <Text style={styles.rateLabel}>Your effective rate</Text>
+          <Text style={styles.rateLabel}>Per kWh</Text>
           <View style={styles.rateValueRow}>
             <Text style={styles.rateValue}>{`₱${ratePerKwh.toFixed(2)}`}</Text>
             <Text style={styles.rateUnit}>/ kWh</Text>
@@ -52,24 +51,24 @@ export function BillCalibrationCard({ calibration }: { calibration: Calibration 
               <Icon name="verified" size={16} color={matchColor} />
               <Text style={[styles.matchLabel, { color: matchColor }]}>{MATCH_LABELS[match]}</Text>
             </View>
-            <Text style={styles.variance}>{`±${(variance * 100).toFixed(1)}% variance`}</Text>
+            <Text style={styles.variance}>{`${(variance * 100).toFixed(1)}% off`}</Text>
           </View>
         )}
       </View>
 
       <View style={styles.ledger}>
-        <LedgerRow icon="devices" iconColor={colors.outline} label="Our raw estimate" value={formatKwh(rawKwh)} />
+        <LedgerRow icon="devices" iconColor={colors.outline} label="Your appliances" value={formatKwh(rawKwh)} />
         <LedgerRow
           icon="price_check"
           iconColor={colors.primary}
-          label="After matching your bill"
+          label={isCalibrated ? 'Your bill' : 'Estimate'}
           value={formatPesoExact(matchedBill)}
           valueStyle={styles.valuePrimary}
         />
         <LedgerRow
           icon="difference"
           iconColor={colors.tertiary}
-          label="Unaccounted standby load"
+          label="Not in your list"
           value={gapKwh === null ? '—' : formatKwh(gapKwh)}
           valueStyle={styles.valueGreen}
         />
@@ -134,10 +133,6 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     letterSpacing: 0.7,
     color: colors.onSurface,
-  },
-  subtitle: {
-    ...typography.labelSm,
-    color: colors.outline,
   },
   badge: {
     flexDirection: 'row',

@@ -29,6 +29,21 @@ export function findPreset(key: string | undefined): AppliancePreset | undefined
   return APPLIANCE_PRESETS[key as AppliancePresetKey];
 }
 
+/**
+ * Presets whose name contains what the user typed, for the suggestions under the name field. Empty
+ * while nothing is typed, and once the name already is a preset's name.
+ */
+export function searchPresets(query: string, limit = 4): { key: AppliancePresetKey; preset: AppliancePreset }[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return [];
+  const entries = Object.entries(APPLIANCE_PRESETS) as [AppliancePresetKey, AppliancePreset][];
+  if (entries.some(([, preset]) => preset.name.toLowerCase() === needle)) return [];
+  return entries
+    .filter(([, preset]) => preset.name.toLowerCase().includes(needle))
+    .slice(0, limit)
+    .map(([key, preset]) => ({ key, preset }));
+}
+
 /** The add sheet's blank form. */
 export function emptyApplianceForm(): ApplianceFormValues {
   return { name: '', watts: '', hoursPerDay: '', daysPerWeek: '7', minHoursPerDay: '', category: 'essential' };

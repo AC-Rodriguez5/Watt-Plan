@@ -50,7 +50,7 @@ describe('explainPlanChange', () => {
     expect(facts.plan_before.projected_bill_pesos).toBe(Math.round(previous.projectedBill));
     expect(facts.plan_after.projected_bill_pesos).toBe(Math.round(next.projectedBill));
     expect(facts.plan_after.cuts.map((cut: { appliance: string }) => cut.appliance)).not.toContain('Inverter Aircon');
-    expect(request.body.system_instruction).toMatch(/2 to 3 short sentences/);
+    expect(request.body.system_instruction).toMatch(/1 or 2 short sentences, under 30 words/);
     expect(request.body.system_instruction).toMatch(/Taglish/);
   });
 

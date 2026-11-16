@@ -14,7 +14,7 @@ export function MissingBillBanner({ onEnterBill }: MissingBillBannerProps) {
     <View style={styles.banner}>
       <View style={styles.message}>
         <Icon name="error" size={20} color={colors.alert} />
-        <Text style={styles.text}>Plan uses a default rate. Enter your last bill for accuracy.</Text>
+        <Text style={styles.text}>Using a default rate.</Text>
       </View>
       <Pressable
         accessibilityRole="button"

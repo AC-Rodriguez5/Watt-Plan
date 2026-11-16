@@ -2,7 +2,7 @@ import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
 import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '@/store/sample-household';
 import type { Appliance, Plan, PlanMode } from '@/types/energy';
 
-import { buildBaseline, optimize } from '../optimizer';
+import { buildBaseline, estimateAppliance, optimize } from '../optimizer';
 
 const MODES: PlanMode[] = ['fewest-changes', 'comfort-first'];
 const BILL = SAMPLE_BILL_SETTINGS; // ₱3,400 for 283 kWh
@@ -89,6 +89,26 @@ describe('stored calibration factor', () => {
   it('is ignored without a bill', () => {
     const noBill = { lastBillTotal: null, lastBillKwh: null };
     expect(buildBaseline(withPump, noBill, 7).calibrationFactor).toBe(1);
+  });
+});
+
+describe('estimateAppliance', () => {
+  it('gives each appliance the same kWh and cost the baseline gives it', () => {
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR);
+    for (const item of baseline.items) {
+      const estimate = estimateAppliance(item.appliance, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR);
+      expect(estimate.kwh).toBeCloseTo(item.kwh);
+      expect(estimate.cost).toBeCloseTo(item.cost);
+      expect(estimate.ratePerKwh).toBeCloseTo(baseline.ratePerKwh);
+    }
+  });
+
+  it('ignores the stored factor while there is no bill, like the baseline', () => {
+    const noBill = { lastBillTotal: null, lastBillKwh: null };
+    const [aircon] = SAMPLE_APPLIANCES;
+    const estimate = estimateAppliance(aircon, noBill, 0.5);
+    expect(estimate.cost).toBeCloseTo(buildBaseline([aircon], noBill, 0.5).cost);
+    expect(estimate.cost).toBeCloseTo(estimateAppliance(aircon, noBill, 1).cost);
   });
 });
 

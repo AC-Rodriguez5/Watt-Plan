@@ -21,8 +21,8 @@ export function PlanApplianceList({ rows }: { rows: PlanApplianceRow[] }) {
 function PlanApplianceRowView({ row, first }: { row: PlanApplianceRow; first: boolean }) {
   const { appliance, changed } = row;
   const hours = changed
-    ? `${formatHours(row.fromHoursPerDay)} → ${formatHours(row.toHoursPerDay)} / day`
-    : `${formatHours(row.fromHoursPerDay)} / day`;
+    ? `${formatHours(row.fromHoursPerDay)} → ${formatHours(row.toHoursPerDay)} a day`
+    : `${formatHours(row.fromHoursPerDay)} a day`;
 
   return (
     <View style={[styles.row, !first && styles.rowDivider, changed && styles.rowChanged]}>

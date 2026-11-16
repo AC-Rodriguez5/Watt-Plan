@@ -19,7 +19,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.screen}>
-      <AppHeader />
+      <AppHeader title="Home" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           {summary ? (

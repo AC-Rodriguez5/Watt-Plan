@@ -18,10 +18,7 @@ export function PlanEssentialsCard({ lowestBill }: PlanEssentialsCardProps) {
       </View>
       <View style={styles.body}>
         <Text style={styles.title}>Your essentials alone cost about {formatPeso(lowestBill)} a month.</Text>
-        <Text style={styles.message}>
-          Appliances that can&apos;t go below their minimum hours account for the rest and cannot be reduced further
-          safely.
-        </Text>
+        <Text style={styles.message}>They can&apos;t be cut any further.</Text>
       </View>
     </View>
   );

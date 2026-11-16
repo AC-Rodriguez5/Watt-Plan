@@ -31,7 +31,7 @@ async function writeReply(systemInstruction: string, facts: object): Promise<str
   }
 }
 
-/** The explain call: the old and new plan from the optimizer go in, 2 to 3 sentences come out. Never throws. */
+/** The explain call: the old and new plan from the optimizer go in, 1 or 2 short sentences come out. Never throws. */
 export async function explainPlanChange(
   message: string,
   action: PlanChangeAction,

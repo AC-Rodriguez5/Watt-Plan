@@ -103,14 +103,22 @@ export const categoryColors = {
     iconTint: colors.primary,
     barColor: colors.primaryContainer,
   },
+  // High-load orange, not red: red is kept for over budget and delete.
   luxury: {
-    chipBackground: colors.errorContainer,
-    chipText: colors.onErrorContainer,
-    iconBackground: `${colors.errorContainer}66`,
-    iconTint: colors.error,
-    barColor: colors.error,
+    chipBackground: colors.alertContainer,
+    chipText: colors.alertAction,
+    iconBackground: colors.alertContainer,
+    iconTint: colors.alert,
+    barColor: colors.alert,
   },
 } as const;
+
+/**
+ * What each signal color means, everywhere in the app:
+ * - red (`error`): over budget, and delete or reset
+ * - green (`tertiary`): savings and on track
+ * - orange (`alert`): a warning, a high-draw appliance, or a luxury one
+ */
 
 // ---------------------------------------------------------------------------
 // Typography

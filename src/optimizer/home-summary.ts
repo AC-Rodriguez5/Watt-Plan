@@ -26,6 +26,8 @@ export type HomeSummary = {
   target: number | null;
   /** Pesos over the target. 0 when at or under it. */
   excess: number;
+  /** Pesos under the target. 0 when at or over it, or when there is no target. */
+  headroom: number;
   /** Excess as a fraction of the target (0.7 = "+70% of goal"). 0 when under it or no target. */
   overGoal: number;
   /** How much of the progress track is filled, 0 to 1: all of it once over target, otherwise estimate / target. */
@@ -57,6 +59,7 @@ export function summarizeHome(baseline: Baseline, target: number | null): HomeSu
 
   const hasTarget = target !== null && target > 0;
   const excess = hasTarget ? Math.max(0, estimatedBill - target) : 0;
+  const headroom = hasTarget ? Math.max(0, target - estimatedBill) : 0;
 
   return {
     estimatedBill,
@@ -65,6 +68,7 @@ export function summarizeHome(baseline: Baseline, target: number | null): HomeSu
     ratePerKwh,
     target,
     excess,
+    headroom,
     overGoal: hasTarget ? excess / target : 0,
     barFill: !hasTarget ? 0 : Math.min(1, estimatedBill / target),
     goalShare: hasTarget && estimatedBill > target ? target / estimatedBill : 1,
@@ -75,8 +79,11 @@ export function summarizeHome(baseline: Baseline, target: number | null): HomeSu
   };
 }
 
-/** One less hour a day on the costliest non-essential appliance, priced from the baseline. Null if none. */
-function oneHourTip({ items }: Baseline): HomeSummary['tip'] {
+/**
+ * One less hour a day on the costliest non-essential appliance, priced from the baseline. Null if none.
+ * Shown on Home and on the Appliances tab.
+ */
+export function oneHourTip({ items }: Baseline): HomeSummary['tip'] {
   const candidate = items
     .filter(({ appliance }) => appliance.category !== 'essential' && appliance.hoursPerDay >= 1)
     .sort((a, b) => b.cost - a.cost)[0];

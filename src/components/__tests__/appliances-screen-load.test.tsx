@@ -2,6 +2,7 @@ import { act } from 'react';
 import { createRoot } from 'test-renderer';
 
 import AppliancesScreen from '@/app/(tabs)/appliances';
+import { oneHourTip } from '@/optimizer/home-summary';
 import { useAppStore } from '@/store/app-store';
 import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '@/store/sample-household';
 import { formatPeso, formatWhole } from '@/utils/format';
@@ -59,6 +60,43 @@ describe('Appliances tab: estimated monthly load', () => {
     expect(shown()).toContain(formatPeso(after.cost));
     expect(shown()).toContain(`${formatWhole(after.kwh)} kWh`);
     expect(shown()).not.toContain(formatPeso(before.cost));
+  });
+
+  it('prices an added appliance on its card instead of showing ₱0', async () => {
+    const { shown } = await renderScreen();
+
+    await act(async () => {
+      useAppStore.getState().addAppliance({ name: 'Water Heater', category: 'luxury', watts: 3000, hoursPerDay: 1, daysPerWeek: 7 });
+    });
+
+    const item = useAppStore.getState().baseline.items.find(({ appliance }) => appliance.name === 'Water Heater')!;
+    expect(item.cost).toBeGreaterThan(0);
+    expect(shown()).toContain(formatPeso(item.cost));
+    expect(shown()).not.toContain('₱0');
+  });
+
+  it('shows a tip priced by the optimizer, not a fixed figure', async () => {
+    const { shown } = await renderScreen();
+    const tip = oneHourTip(useAppStore.getState().baseline)!;
+
+    expect(shown()).toContain(`Cut ${tip.applianceName} by 1 hour a day to save about ${formatPeso(tip.saving)} a month.`);
+    expect(shown()).not.toContain('₱320');
+  });
+
+  it('filters the cards as you type a search', async () => {
+    const { root, shown } = await renderScreen();
+    const byLabel = (label: string) => root.container.queryAll((node) => node.props.accessibilityLabel === label)[0];
+
+    await act(async () => byLabel('Search appliances')?.props.onClick?.({}));
+    await act(async () => byLabel('Search appliances')?.props.onChangeText('fan'));
+    expect(shown()).toContain('Stand Fan');
+    expect(shown()).not.toContain('Two-Door Refrigerator');
+
+    await act(async () => byLabel('Search appliances')?.props.onChangeText('zzz'));
+    expect(shown()).toContain('No appliance matches "zzz"');
+
+    await act(async () => byLabel('Close search')?.props.onClick?.({}));
+    expect(shown()).toContain('Two-Door Refrigerator');
   });
 
   it('goes down when an appliance is removed', async () => {
