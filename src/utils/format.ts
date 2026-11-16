@@ -43,6 +43,11 @@ export function formatPesoCut(value: number): string {
   return `-₱${groupThousands(value)}`;
 }
 
+/** 4.5 -> "4.5 h" */
+export function formatHours(value: number): string {
+  return `${value.toFixed(1)} h`;
+}
+
 /** A timestamp as "10:14 AM" (device local time). */
 export function formatClock(timestamp: number): string {
   const date = new Date(timestamp);

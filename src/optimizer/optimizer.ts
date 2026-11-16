@@ -22,8 +22,8 @@ const EPSILON = 1e-6;
  * Plain TypeScript, no AI, no network. Every peso and kWh figure in the app comes from here.
  *
  * The model: each appliance's kWh is scaled by one calibration factor (billed kWh / summed appliance
- * kWh) so the household's baseline adds up to the last bill. Cutting hours then removes the same
- * share of that appliance's baseline cost.
+ * kWh at the time the bill settings were saved), so the baseline adds up to the last bill until the
+ * appliances change. Cutting hours then removes the same share of that appliance's baseline cost.
  */
 
 export type ApplianceBaseline = {
@@ -39,20 +39,29 @@ export type ApplianceBaseline = {
 export type Baseline = {
   /** Pesos per kWh: last bill total / last bill kWh, or the default rate when no bill is entered. */
   ratePerKwh: number;
-  /** Billed kWh / summed appliance kWh. 1 when there is no bill to calibrate against. */
+  /** The stored factor (billed kWh / summed appliance kWh when the bill was saved). 1 when there is no bill. */
   calibrationFactor: number;
   isCalibrated: boolean;
   /** kWh per month across all appliances, scaled. */
   kwh: number;
-  /** Pesos per month across all appliances. Equals the last bill total when calibrated. */
+  /** Pesos per month across all appliances. Equals the last bill total only while the appliances match the saved calibration. */
   cost: number;
   items: ApplianceBaseline[];
 };
 
-/** Monthly kWh and cost per appliance, scaled so the household adds up to its last bill. */
-export function buildBaseline(appliances: Appliance[], bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>): Baseline {
-  const { ratePerKwh, rawKwh, isCalibrated } = calibrate(appliances, bill.lastBillTotal, bill.lastBillKwh);
-  const calibrationFactor = isCalibrated && rawKwh > 0 && bill.lastBillKwh !== null ? bill.lastBillKwh / rawKwh : 1;
+/**
+ * Monthly kWh and cost per appliance, each scaled by `storedFactor`: the factor computed when the
+ * bill settings were last saved (see computeCalibrationFactor). It is not recomputed here, so adding
+ * or editing an appliance changes the estimate instead of being scaled back to the last bill.
+ * With no bill to calibrate against the factor is 1, whatever is passed.
+ */
+export function buildBaseline(
+  appliances: Appliance[],
+  bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>,
+  storedFactor: number,
+): Baseline {
+  const { ratePerKwh, isCalibrated } = calibrate(appliances, bill.lastBillTotal, bill.lastBillKwh);
+  const calibrationFactor = isCalibrated ? storedFactor : 1;
 
   const items = appliances.map<ApplianceBaseline>((appliance) => {
     const kwh = monthlyKwh(appliance) * calibrationFactor;
@@ -134,13 +143,14 @@ type CutState = {
 export function optimize(
   appliances: Appliance[],
   bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>,
+  calibrationFactor: number,
   target: number | null,
   mode: PlanMode,
   constraints: PlanConstraints = NO_CONSTRAINTS,
 ): Plan | null {
   if (target === null || !(target > 0) || appliances.length === 0) return null;
 
-  const baseline = buildBaseline(appliances, bill);
+  const baseline = buildBaseline(appliances, bill, calibrationFactor);
   const currentEstimate = baseline.cost;
   const floor = lowestBill(baseline, constraints);
   const needed = currentEstimate - target;

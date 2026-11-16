@@ -25,9 +25,11 @@ import {
   type ApplianceFormErrors,
   type ApplianceFormValues,
 } from '@/utils/appliance-form';
+import { addFormValues, type AppliancePreset } from '@/utils/appliance-presets';
 import { formatKwh, formatPeso, formatRate, formatWhole } from '@/utils/format';
 
-type ApplianceSheetProps = { mode: 'add' } | { mode: 'edit'; appliance: Appliance };
+/** In add mode, `preset` pre-fills the form. Mount a fresh sheet (new `key`) per open so state never carries over. */
+type ApplianceSheetProps = { mode: 'add'; preset?: AppliancePreset } | { mode: 'edit'; appliance: Appliance };
 
 const CATEGORIES: ApplianceCategory[] = ['essential', 'flexible', 'luxury'];
 const CATEGORY_LABELS: Record<ApplianceCategory, string> = {
@@ -74,7 +76,7 @@ const EDIT_LUXURY_DESCRIPTION = {
 
 function initialValues(props: ApplianceSheetProps): ApplianceFormValues {
   if (props.mode === 'add') {
-    return { name: '', watts: '', hoursPerDay: '', daysPerWeek: '7', minHoursPerDay: '', category: 'essential' };
+    return addFormValues(props.preset);
   }
   const { appliance } = props;
   return {

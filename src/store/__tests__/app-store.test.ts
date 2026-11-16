@@ -1,13 +1,23 @@
 import { mockGemini } from '@/ai/__mocks__/gemini-fetch';
 
+import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
+import { summarizeHome } from '@/optimizer/home-summary';
+import type { Appliance } from '@/types/energy';
+
 import { useAppStore } from '../app-store';
-import { SAMPLE_APPLIANCES } from '../sample-household';
+import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '../sample-household';
 
 const cutsAircon = () => useAppStore.getState().plan?.cuts.some(({ applianceId }) => applianceId === 'aircon');
 
 describe('shared plan', () => {
   beforeEach(() => {
-    useAppStore.setState({ appliances: SAMPLE_APPLIANCES, constraints: { keep: [], cutFirst: [] }, chat: [] });
+    useAppStore.setState({
+      appliances: SAMPLE_APPLIANCES,
+      billSettings: SAMPLE_BILL_SETTINGS,
+      calibrationFactor: SAMPLE_CALIBRATION_FACTOR,
+      constraints: { keep: [], cutFirst: [] },
+      chat: [],
+    });
     useAppStore.getState().setTarget(2000);
     useAppStore.getState().setPlanMode('fewest-changes');
   });
@@ -51,5 +61,85 @@ describe('shared plan', () => {
     expect(cutsAircon()).toBe(false);
     useAppStore.getState().setTarget(2200);
     expect(cutsAircon()).toBe(false);
+  });
+});
+
+describe('calibration factor', () => {
+  const HEATER: Omit<Appliance, 'id'> = { name: 'Water Heater', category: 'luxury', watts: 3000, hoursPerDay: 4, daysPerWeek: 7 };
+
+  beforeEach(() => {
+    useAppStore.setState({
+      appliances: SAMPLE_APPLIANCES,
+      billSettings: SAMPLE_BILL_SETTINGS,
+      calibrationFactor: SAMPLE_CALIBRATION_FACTOR,
+      constraints: { keep: [], cutFirst: [] },
+      chat: [],
+    });
+    useAppStore.getState().setTarget(2000);
+    useAppStore.getState().setPlanMode('fewest-changes');
+  });
+
+  const home = () => summarizeHome(useAppStore.getState().baseline, useAppStore.getState().target);
+
+  it('starts at the seeded factor, matching the sample bill', () => {
+    const { calibrationFactor, baseline } = useAppStore.getState();
+    expect(calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
+    expect(baseline.cost).toBeCloseTo(3400, 6);
+  });
+
+  it('adding an appliance raises the baseline, Home, the plan and the costliest list', () => {
+    const before = { baseline: useAppStore.getState().baseline.cost, home: home().estimatedBill, plan: useAppStore.getState().plan!.currentEstimate };
+
+    useAppStore.getState().addAppliance(HEATER);
+
+    const { baseline, plan, calibrationFactor } = useAppStore.getState();
+    expect(calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
+    expect(baseline.cost).toBeGreaterThan(before.baseline + 1);
+    expect(home().estimatedBill).toBeGreaterThan(before.home + 1);
+    expect(home().estimatedBill).toBeCloseTo(baseline.cost, 6);
+    expect(plan!.currentEstimate).toBeGreaterThan(before.plan + 1);
+    expect(plan!.currentEstimate).toBeCloseTo(baseline.cost, 6);
+    expect(home().topCosts[0].appliance.name).toBe('Water Heater');
+  });
+
+  it('removing an appliance lowers the baseline', () => {
+    useAppStore.getState().removeAppliance('aircon');
+    const { baseline, calibrationFactor } = useAppStore.getState();
+    expect(calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
+    expect(baseline.cost).toBeLessThan(3400 - 1);
+    expect(home().topCosts.map(({ appliance }) => appliance.id)).not.toContain('aircon');
+  });
+
+  it('editing an appliance changes the baseline', () => {
+    useAppStore.getState().updateAppliance('tv', { hoursPerDay: 10 });
+    expect(useAppStore.getState().baseline.cost).toBeGreaterThan(3400 + 1);
+    expect(useAppStore.getState().calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
+  });
+
+  it('saving bill settings again recalibrates from the current appliances', () => {
+    useAppStore.getState().addAppliance(HEATER);
+    expect(useAppStore.getState().baseline.cost).toBeGreaterThan(3400 + 1);
+
+    useAppStore.getState().updateBillSettings({ lastBillTotal: 3400, lastBillKwh: 283 });
+
+    const { calibrationFactor, appliances, baseline, plan } = useAppStore.getState();
+    expect(calibrationFactor).toBeCloseTo(computeCalibrationFactor(appliances, 3400, 283), 12);
+    expect(calibrationFactor).toBeLessThan(SAMPLE_CALIBRATION_FACTOR);
+    expect(baseline.cost).toBeCloseTo(3400, 6);
+    expect(plan!.currentEstimate).toBeCloseTo(3400, 6);
+  });
+
+  it('uses a factor of 1 when the saved bill settings have no bill', () => {
+    useAppStore.getState().updateBillSettings({ lastBillTotal: null, lastBillKwh: null });
+    const { calibrationFactor, baseline } = useAppStore.getState();
+    expect(calibrationFactor).toBe(1);
+    expect(baseline.isCalibrated).toBe(false);
+    expect(baseline.calibrationFactor).toBe(1);
+  });
+
+  it('keeps the factor when only the target or strategy changes', () => {
+    useAppStore.getState().setTarget(1500);
+    useAppStore.getState().setPlanMode('comfort-first');
+    expect(useAppStore.getState().calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
   });
 });

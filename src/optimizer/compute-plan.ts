@@ -10,14 +10,15 @@ import { planStub } from './stub-planner';
 export function computePlan(
   appliances: Appliance[],
   bill: BillSettings,
+  calibrationFactor: number,
   target: number | null,
   mode: PlanMode,
   constraints: PlanConstraints = NO_CONSTRAINTS,
 ): Plan | null {
   try {
-    return optimize(appliances, bill, target, mode, constraints);
+    return optimize(appliances, bill, calibrationFactor, target, mode, constraints);
   } catch (error) {
     console.warn('Optimizer failed, using the fallback planner.', error);
-    return planStub(appliances, bill, target, mode, constraints);
+    return planStub(appliances, bill, calibrationFactor, target, mode, constraints);
   }
 }

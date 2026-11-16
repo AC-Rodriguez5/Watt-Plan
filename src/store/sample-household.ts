@@ -1,3 +1,4 @@
+import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
 import type { Appliance, BillSettings } from '@/types/energy';
 
 /** Sample household from design/screens (appliances, bill settings, home). */
@@ -46,6 +47,13 @@ export const SAMPLE_BILL_SETTINGS: BillSettings = {
   distributionCharge: 720,
   taxesCharge: 830,
 };
+
+/** The calibration factor the sample household is seeded with, computed once from its appliances and bill. */
+export const SAMPLE_CALIBRATION_FACTOR = computeCalibrationFactor(
+  SAMPLE_APPLIANCES,
+  SAMPLE_BILL_SETTINGS.lastBillTotal,
+  SAMPLE_BILL_SETTINGS.lastBillKwh,
+);
 
 /** What "Reset all data" restores: the same utility and period, no bill figures. */
 export const EMPTY_BILL_SETTINGS: BillSettings = {

@@ -5,21 +5,21 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AppHeader } from '@/components/app-header';
 import { Icon } from '@/components/icon';
 import { MissingBillBanner } from '@/components/missing-bill-banner';
+import { PlanApplianceList } from '@/components/plan-appliance-list';
 import { PlanEssentialsCard } from '@/components/plan-essentials-card';
 import { PlanRateCard } from '@/components/plan-rate-card';
 import { PlanStatusCard } from '@/components/plan-status-card';
 import { PlanTargetAlertCard } from '@/components/plan-target-alert-card';
 import { PlanTargetCard } from '@/components/plan-target-card';
 import { Receipt } from '@/components/receipt';
-import { NotReachableReceipt } from '@/components/receipt-not-reachable';
 import { Snackbar } from '@/components/snackbar';
 import { StrategyToggle } from '@/components/strategy-toggle';
 import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
 import { calibrate } from '@/optimizer/bill-calibration';
+import { planApplianceRows } from '@/optimizer/plan-appliances';
 import { lowestReachableTarget } from '@/optimizer/plan-revision';
 import { useAppStore } from '@/store/app-store';
 import { formatPeso } from '@/utils/format';
-import { toNotReachableReceiptProps, toReceiptProps } from '@/utils/plan-receipt';
 
 export default function PlanScreen() {
   const appliances = useAppStore((state) => state.appliances);
@@ -27,6 +27,7 @@ export default function PlanScreen() {
   const target = useAppStore((state) => state.target);
   const planMode = useAppStore((state) => state.planMode);
   const plan = useAppStore((state) => state.plan);
+  const baseline = useAppStore((state) => state.baseline);
   const setPlanMode = useAppStore((state) => state.setPlanMode);
   const setTarget = useAppStore((state) => state.setTarget);
   const [snackbar, setSnackbar] = useState<{ id: number; message: string; previousTarget: number | null; newTarget: number } | null>(null);
@@ -38,6 +39,7 @@ export default function PlanScreen() {
   );
   const utility = billSettings.utility.split(' ')[0];
   const rateSource = isCalibrated ? `Matched to ${utility} bill` : 'Default rate';
+  const applianceRows = useMemo(() => (plan ? planApplianceRows(baseline, plan) : []), [baseline, plan]);
   const notReachable = plan?.status === 'not-reachable';
   const editTarget = () => router.push('/target-edit');
 
@@ -97,12 +99,17 @@ export default function PlanScreen() {
 
           <StrategyToggle value={planMode} onChange={setPlanMode} />
 
-          {plan &&
-            (notReachable ? (
-              <NotReachableReceipt {...toNotReachableReceiptProps(plan, appliances, billSettings)} />
-            ) : (
-              <Receipt {...toReceiptProps(plan, appliances, billSettings)} />
-            ))}
+          {plan && (
+            <>
+              <Receipt
+                status={plan.status}
+                currentEstimate={plan.currentEstimate}
+                target={plan.target}
+                projectedBill={plan.projectedBill}
+              />
+              <PlanApplianceList rows={applianceRows} />
+            </>
+          )}
 
           {plan?.status === 'feasible' && <PlanStatusCard kwhSaved={plan.kwhSaved} co2SavedKg={plan.co2SavedKg} />}
 

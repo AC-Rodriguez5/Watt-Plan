@@ -4,44 +4,14 @@ import Svg, { Line, Polygon } from 'react-native-svg';
 
 import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
 import type { PlanStatus } from '@/types/energy';
-import { formatPeso, formatPesoCut } from '@/utils/format';
-
-export type ReceiptCategory = 'essential' | 'flexible' | 'luxury';
-
-export type ReceiptLineItem = {
-  id: string;
-  category: ReceiptCategory;
-  name: string;
-  /** Pesos saved per month, as a positive number. */
-  saving: number;
-  /** Second line, e.g. "6.0 h → 4.5 h daily". */
-  detail: string;
-  /** Change shown in red on the second line, e.g. "(-1.5 h)". */
-  change: string;
-};
+import { formatPeso } from '@/utils/format';
 
 export type ReceiptProps = {
-  /** Recommended cuts, in display order. */
-  items: ReceiptLineItem[];
   /** Drives the stamp under the header. */
   status: PlanStatus;
   projectedBill: number;
   currentEstimate: number;
   target: number;
-  /** Sum of all item savings. Computed by the optimizer, not here. */
-  totalCuts: number;
-  /** Header line, e.g. "OCT 2024". */
-  period: string;
-  /** Header line, e.g. "PH-MNL-7749-X". */
-  termId: string;
-  /** Digits printed under the barcode, e.g. "0924 8831 2000". */
-  barcodeNumber: string;
-};
-
-export const CATEGORY_CHIP: Record<ReceiptCategory, { label: string; background: string; color: string }> = {
-  luxury: { label: 'LUX', background: colors.alertContainer, color: colors.alert },
-  essential: { label: 'ESS', background: colors.surfaceContainer, color: colors.onSurfaceVariant },
-  flexible: { label: 'FLX', background: colors.secondaryFixed, color: colors.onSecondaryFixedVariant },
 };
 
 const STAMP: Record<PlanStatus, { label: string; color: string }> = {
@@ -51,30 +21,14 @@ const STAMP: Record<PlanStatus, { label: string; color: string }> = {
 
 const TOOTH_WIDTH = 6;
 const TOOTH_DEPTH = 4;
-const BARCODE_BARS = [4, 2, 6, 2, 8, 2, 4, 8, 2, 4, 2, 8, 4, 2, 6, 2, 4, 8];
 const LEADER = '. . . . . .';
 
-export function Receipt({
-  items,
-  status,
-  projectedBill,
-  currentEstimate,
-  target,
-  totalCuts,
-  period,
-  termId,
-  barcodeNumber,
-}: ReceiptProps) {
+/** Compact plan receipt: the estimate, the target, the projected bill and whether the target is met. */
+export function Receipt({ status, projectedBill, currentEstimate, target }: ReceiptProps) {
   const stamp = STAMP[status];
   return (
     <View style={styles.wrapper}>
       <View style={styles.paper}>
-        <View style={styles.header}>
-          <Text style={styles.title}>★ YOUR PLAN ★</Text>
-          <Text style={styles.subtitle}>WATT PLAN OPTIMIZER · {period}</Text>
-          <Text style={styles.termId}>TERM-ID: {termId}</Text>
-        </View>
-
         <View style={styles.stampRow}>
           <View style={[styles.stamp, { borderColor: stamp.color }]}>
             <Text style={[styles.stampText, { color: stamp.color }]}>{stamp.label}</Text>
@@ -88,64 +42,12 @@ export function Receipt({
 
         <DashedRule />
 
-        <Text style={styles.sectionHeader}>RECOMMENDED CUTS</Text>
-
-        <View style={styles.items}>
-          {items.map((item) => {
-            const chip = CATEGORY_CHIP[item.category];
-            return (
-              <View key={item.id} style={styles.item}>
-                <View style={styles.itemTop}>
-                  <View style={styles.itemName}>
-                    <View style={[styles.chip, { backgroundColor: chip.background }]}>
-                      <Text style={[styles.chipText, { color: chip.color }]}>{chip.label}</Text>
-                    </View>
-                    <Text style={styles.itemNameText} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                  </View>
-                  <Text style={styles.cutValue}>{formatPesoCut(item.saving)}</Text>
-                </View>
-                <View style={styles.itemBottom}>
-                  <Text style={styles.detail}>{item.detail}</Text>
-                  <Text style={styles.change}>{item.change}</Text>
-                </View>
-              </View>
-            );
-          })}
+        <View style={styles.projectedRow}>
+          <Text style={styles.projectedLabel}>PROJECTED BILL</Text>
+          <Text style={styles.projectedValue}>{formatPeso(projectedBill)}</Text>
         </View>
-
-        <DashedRule />
-
-        <View style={styles.totals}>
-          <LeaderRow label="TOTAL CUTS" labelStyle={styles.totalLabel} value={formatPesoCut(totalCuts)} valueStyle={styles.cutValue} />
-          <View style={styles.projectedRow}>
-            <Text style={styles.projectedLabel}>PROJECTED BILL</Text>
-            <Text style={styles.projectedValue}>{formatPeso(projectedBill)}</Text>
-          </View>
-          <View style={styles.savingsRow}>
-            <Text style={styles.detail}>Est. savings</Text>
-            <Text style={styles.savingsValue}>{formatPesoCut(totalCuts)} / mo</Text>
-          </View>
-        </View>
-
-        <Barcode number={barcodeNumber} />
       </View>
       <SawtoothEdge />
-    </View>
-  );
-}
-
-/** Decorative barcode with its number underneath. */
-export function Barcode({ number }: { number: string }) {
-  return (
-    <View style={styles.barcode}>
-      <View style={styles.bars}>
-        {BARCODE_BARS.map((width, index) => (
-          <View key={index} style={{ width, backgroundColor: colors.onSurface }} />
-        ))}
-      </View>
-      <Text style={styles.barcodeNumber}>{number}</Text>
     </View>
   );
 }
@@ -215,35 +117,13 @@ const styles = StyleSheet.create({
   },
   paper: {
     backgroundColor: colors.surfaceContainerLowest,
-    paddingTop: 20,
+    paddingTop: spacing.xs,
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 20,
     boxShadow: shadows.receipt,
   },
   sawtooth: {
     height: TOOTH_DEPTH,
-  },
-  header: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  title: {
-    ...typography.receiptLabel,
-    fontFamily: typography.receiptNumericLg.fontFamily,
-    fontSize: 13,
-    letterSpacing: 2.6,
-    color: colors.onSurface,
-  },
-  subtitle: {
-    ...typography.receiptLabel,
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-  },
-  termId: {
-    ...typography.receiptLabel,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    color: colors.outline,
   },
   stampRow: {
     alignItems: 'center',
@@ -296,75 +176,6 @@ const styles = StyleSheet.create({
     marginVertical: spacing.sm,
     overflow: 'hidden',
   },
-  sectionHeader: {
-    ...typography.receiptLabel,
-    fontFamily: typography.receiptNumericLg.fontFamily,
-    fontSize: 11,
-    color: colors.onSurface,
-    paddingVertical: spacing.xs,
-  },
-  items: {
-    gap: 10,
-    paddingVertical: spacing.xs,
-  },
-  item: {
-    gap: 2,
-  },
-  itemTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  itemName: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    flexShrink: 1,
-  },
-  chip: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: radii.sm,
-  },
-  chipText: {
-    fontFamily: typography.receiptNumericLg.fontFamily,
-    fontSize: 10,
-    lineHeight: 14,
-  },
-  itemNameText: {
-    ...typography.receiptLabel,
-    color: colors.onSurface,
-    flexShrink: 1,
-  },
-  cutValue: {
-    ...typography.receiptNumericMd,
-    fontFamily: typography.receiptNumericLg.fontFamily,
-    color: colors.tertiary,
-  },
-  itemBottom: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingLeft: 24,
-  },
-  detail: {
-    ...typography.receiptLabel,
-    fontSize: 11,
-    color: colors.onSurfaceVariant,
-  },
-  change: {
-    ...typography.receiptLabel,
-    fontSize: 11,
-    color: colors.error,
-  },
-  totals: {
-    gap: spacing.xs,
-    paddingTop: spacing.xs,
-    paddingBottom: 12,
-  },
-  totalLabel: {
-    fontFamily: typography.receiptNumericLg.fontFamily,
-  },
   projectedRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -380,34 +191,5 @@ const styles = StyleSheet.create({
   projectedValue: {
     ...typography.receiptNumericLg,
     color: colors.primary,
-  },
-  savingsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-  },
-  savingsValue: {
-    ...typography.receiptLabel,
-    fontSize: 11,
-    fontFamily: typography.receiptNumericLg.fontFamily,
-    color: colors.tertiary,
-  },
-  barcode: {
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    opacity: 0.7,
-  },
-  bars: {
-    width: 192,
-    height: 24,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  barcodeNumber: {
-    ...typography.receiptLabel,
-    fontSize: 9,
-    letterSpacing: 1.8,
-    marginTop: spacing.xs,
-    color: colors.onSurfaceVariant,
   },
 });

@@ -5,13 +5,14 @@ import { interpretMessage } from '@/ai/interpret';
 import { DIDNT_CATCH_REPLY, NO_CHANGE_REPLY, NO_PLAN_REPLY } from '@/ai/templates';
 import { actionTargetsExist, applyAction, inputsBefore, isPlanChange, restoreInputs } from '@/optimizer/apply-action';
 import { computePlan } from '@/optimizer/compute-plan';
+import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
 import { buildBaseline, type Baseline } from '@/optimizer/optimizer';
 import { planChanged } from '@/optimizer/plan-revision';
 import type { AssistantStatus, ChatMessage, PlanRevision } from '@/types/chat';
 import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanMode } from '@/types/energy';
 
 import { clearPersistedState, type PersistedState } from './persistence';
-import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample-household';
+import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, SAMPLE_TARGET } from './sample-household';
 
 /**
  * The one shared store. Home, the Plan screen and Plan chat all read `plan` and `baseline`, so they
@@ -22,6 +23,12 @@ import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_TARGET } from './sample
 type AppState = {
   appliances: Appliance[];
   billSettings: BillSettings;
+  /**
+   * Billed kWh / summed appliance kWh, computed once when the bill settings are saved (and for the
+   * sample household) and reused until the next save. Appliance edits do not touch it, so they move
+   * the baseline, Home and the plan instead of being scaled back to the last bill. 1 without a bill.
+   */
+  calibrationFactor: number;
   /** Monthly bill target in pesos. Null until the user sets one. */
   target: number | null;
   /** Strategy the next plan is computed with. */
@@ -42,6 +49,7 @@ type AppActions = {
   addAppliance: (appliance: Omit<Appliance, 'id'>) => void;
   updateAppliance: (id: string, changes: Partial<Omit<Appliance, 'id'>>) => void;
   removeAppliance: (id: string) => void;
+  /** Saves bill settings and recalibrates: the factor is recomputed from the current appliances. */
   updateBillSettings: (changes: Partial<BillSettings>) => void;
   setTarget: (target: number | null) => void;
   setPlanMode: (mode: PlanMode) => void;
@@ -69,19 +77,24 @@ type AppActions = {
 function derive({
   appliances,
   billSettings,
+  calibrationFactor,
   target,
   planMode,
   constraints,
-}: Pick<AppState, 'appliances' | 'billSettings' | 'target' | 'planMode' | 'constraints'>): Pick<AppState, 'plan' | 'baseline'> {
+}: Pick<AppState, 'appliances' | 'billSettings' | 'calibrationFactor' | 'target' | 'planMode' | 'constraints'>): Pick<
+  AppState,
+  'plan' | 'baseline'
+> {
   return {
-    baseline: buildBaseline(appliances, billSettings),
-    plan: computePlan(appliances, billSettings, target, planMode, constraints),
+    baseline: buildBaseline(appliances, billSettings, calibrationFactor),
+    plan: computePlan(appliances, billSettings, calibrationFactor, target, planMode, constraints),
   };
 }
 
 const INITIAL_INPUTS = {
   appliances: SAMPLE_APPLIANCES,
   billSettings: SAMPLE_BILL_SETTINGS,
+  calibrationFactor: SAMPLE_CALIBRATION_FACTOR,
   target: SAMPLE_TARGET as number | null,
   planMode: 'fewest-changes' as PlanMode,
   constraints: NO_CONSTRAINTS,
@@ -102,7 +115,14 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
       appliances: state.appliances.map((a) => (a.id === id ? { ...a, ...changes } : a)),
     })),
   removeAppliance: (id) => set((state) => ({ appliances: state.appliances.filter((a) => a.id !== id) })),
-  updateBillSettings: (changes) => set((state) => ({ billSettings: { ...state.billSettings, ...changes } })),
+  updateBillSettings: (changes) =>
+    set((state) => {
+      const billSettings = { ...state.billSettings, ...changes };
+      return {
+        billSettings,
+        calibrationFactor: computeCalibrationFactor(state.appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),
+      };
+    }),
   setTarget: (target) => set({ target }),
   setPlanMode: (planMode) => set({ planMode }),
   setPlan: (plan) => set({ plan }),
@@ -196,7 +216,7 @@ async function runPipeline(text: string): Promise<void> {
   if (interpretation.kind === 'invalid') return finish(reply(DIDNT_CATCH_REPLY));
 
   // The household may have changed while the model was answering.
-  const { appliances, billSettings, target, planMode, constraints, plan, baseline } = get();
+  const { appliances, billSettings, calibrationFactor, target, planMode, constraints, plan, baseline } = get();
   const { action } = interpretation;
 
   if (!isPlanChange(action)) {
@@ -206,7 +226,7 @@ async function runPipeline(text: string): Promise<void> {
 
   if (!actionTargetsExist(action, appliances)) return finish(reply(DIDNT_CATCH_REPLY));
   const inputs = applyAction(action, { appliances, target, constraints });
-  const next = computePlan(inputs.appliances, billSettings, inputs.target, planMode, inputs.constraints);
+  const next = computePlan(inputs.appliances, billSettings, calibrationFactor, inputs.target, planMode, inputs.constraints);
   if (!next) return finish(reply(NO_PLAN_REPLY));
 
   if (!planChanged(plan, next)) {
@@ -226,13 +246,14 @@ async function runPipeline(text: string): Promise<void> {
   finish(reply(await explainPlanChange(text, action, appliances, plan, next), revision));
 }
 
-// Keep the plan in step with the household: any change to the appliances, bill settings, target or
+// Keep the plan in step with the household: any change to the appliances, bill settings, calibration, target or
 // strategy recomputes it, whichever screen made the change. Constraints are not watched: the chat
 // sets them together with the plan it computed, and undo recomputes explicitly.
 useAppStore.subscribe((state, previous) => {
   if (
     state.appliances !== previous.appliances ||
     state.billSettings !== previous.billSettings ||
+    state.calibrationFactor !== previous.calibrationFactor ||
     state.target !== previous.target ||
     state.planMode !== previous.planMode
   ) {

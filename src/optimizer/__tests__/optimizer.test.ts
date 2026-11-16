@@ -1,10 +1,14 @@
-import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS } from '@/store/sample-household';
+import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
+import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '@/store/sample-household';
 import type { Appliance, Plan, PlanMode } from '@/types/energy';
 
 import { buildBaseline, optimize } from '../optimizer';
 
 const MODES: PlanMode[] = ['fewest-changes', 'comfort-first'];
 const BILL = SAMPLE_BILL_SETTINGS; // ₱3,400 for 283 kWh
+
+/** The factor the app stores when this household's bill settings are saved. */
+const factorFor = (appliances: Appliance[]) => computeCalibrationFactor(appliances, BILL.lastBillTotal, BILL.lastBillKwh);
 
 /** Independent restatement of the model, so the tests do not just echo the implementation. */
 function expectedBill(appliances: Appliance[], hoursOf: (appliance: Appliance) => number): number {
@@ -19,14 +23,14 @@ function expectedBill(appliances: Appliance[], hoursOf: (appliance: Appliance) =
 const floorHoursOf = (a: Appliance) => (a.category === 'luxury' ? 0 : (a.minHoursPerDay ?? a.hoursPerDay));
 
 function plan(target: number, mode: PlanMode = 'fewest-changes', appliances = SAMPLE_APPLIANCES): Plan {
-  const result = optimize(appliances, BILL, target, mode);
+  const result = optimize(appliances, BILL, factorFor(appliances), target, mode);
   if (!result) throw new Error('expected a plan');
   return result;
 }
 
 describe('baseline', () => {
   it('scales the appliances so they add up to the last bill', () => {
-    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL);
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
     expect(baseline.isCalibrated).toBe(true);
     expect(baseline.cost).toBeCloseTo(3400, 6);
     expect(baseline.kwh).toBeCloseTo(283, 6);
@@ -34,7 +38,7 @@ describe('baseline', () => {
   });
 
   it('prices each appliance at its calibrated share of the bill', () => {
-    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL);
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
     const aircon = baseline.items.find(({ appliance }) => appliance.id === 'aircon')!;
     const everything = expectedBill(SAMPLE_APPLIANCES, (a) => a.hoursPerDay);
     const airconOnly = expectedBill(SAMPLE_APPLIANCES, (a) => (a.id === 'aircon' ? a.hoursPerDay : 0));
@@ -43,10 +47,48 @@ describe('baseline', () => {
   });
 
   it('falls back to the default rate and no scaling without a bill', () => {
-    const baseline = buildBaseline(SAMPLE_APPLIANCES, { lastBillTotal: null, lastBillKwh: null });
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, { lastBillTotal: null, lastBillKwh: null }, SAMPLE_CALIBRATION_FACTOR);
     expect(baseline.isCalibrated).toBe(false);
     expect(baseline.calibrationFactor).toBe(1);
     expect(baseline.ratePerKwh).toBe(12.5);
+  });
+});
+
+describe('stored calibration factor', () => {
+  const PUMP: Appliance = { id: 'pump', name: 'Water Pump', category: 'essential', watts: 750, hoursPerDay: 3, daysPerWeek: 7 };
+  const withPump = [...SAMPLE_APPLIANCES, PUMP];
+
+  it('is billed kWh over the appliances kWh, and 1 without a usable bill', () => {
+    const rawKwh = SAMPLE_APPLIANCES.reduce((sum, a) => sum + (a.watts * a.hoursPerDay * a.daysPerWeek * 4.33) / 1000, 0);
+    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 3400, 283)).toBeCloseTo(283 / rawKwh, 9);
+    expect(SAMPLE_CALIBRATION_FACTOR).toBeCloseTo(283 / rawKwh, 9);
+    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, null, null)).toBe(1);
+    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 3400, null)).toBe(1);
+    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 0, 283)).toBe(1);
+    expect(computeCalibrationFactor([], 3400, 283)).toBe(1);
+  });
+
+  it('is reused as given, so an added appliance raises the baseline instead of being scaled away', () => {
+    const before = buildBaseline(SAMPLE_APPLIANCES, BILL, SAMPLE_CALIBRATION_FACTOR);
+    const after = buildBaseline(withPump, BILL, SAMPLE_CALIBRATION_FACTOR);
+    expect(after.calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
+    expect(after.cost).toBeGreaterThan(before.cost + 1);
+    expect(after.kwh).toBeGreaterThan(before.kwh);
+    // Each appliance already in the household keeps its cost.
+    expect(after.items[0].cost).toBeCloseTo(before.items[0].cost, 9);
+    // Recalibrating (a new factor for the new household) is what brings it back to the bill.
+    expect(buildBaseline(withPump, BILL, factorFor(withPump)).cost).toBeCloseTo(3400, 6);
+  });
+
+  it('reaches the plan: its current estimate follows the baseline', () => {
+    const result = optimize(withPump, BILL, SAMPLE_CALIBRATION_FACTOR, 2000, 'fewest-changes')!;
+    expect(result.currentEstimate).toBeCloseTo(buildBaseline(withPump, BILL, SAMPLE_CALIBRATION_FACTOR).cost, 6);
+    expect(result.currentEstimate).toBeGreaterThan(3400);
+  });
+
+  it('is ignored without a bill', () => {
+    const noBill = { lastBillTotal: null, lastBillKwh: null };
+    expect(buildBaseline(withPump, noBill, 7).calibrationFactor).toBe(1);
   });
 });
 
@@ -74,7 +116,7 @@ describe('optimize', () => {
 
   it('reports the saving of each change in pesos', () => {
     const result = plan(2000);
-    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL);
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
     for (const cut of result.cuts) {
       const item = baseline.items.find(({ appliance }) => appliance.id === cut.applianceId)!;
       const expected = item.cost * ((cut.fromHoursPerDay - cut.toHoursPerDay) / cut.fromHoursPerDay);
@@ -129,11 +171,11 @@ describe('optimize', () => {
       { id: 'pump', name: 'Water Pump', category: 'essential', watts: 750, hoursPerDay: 3, daysPerWeek: 7, minHoursPerDay: 1 },
       { id: 'tv', name: 'TV', category: 'flexible', watts: 100, hoursPerDay: 5, daysPerWeek: 7, minHoursPerDay: 2 },
     ];
-    const baseline = buildBaseline(household, BILL);
+    const baseline = buildBaseline(household, BILL, factorFor(household));
     const tv = baseline.items[1];
     // Needs a little more than the TV can give.
     const target = baseline.cost - tv.costPerDailyHour * 3 - 1;
-    const result = optimize(household, BILL, target, 'fewest-changes')!;
+    const result = optimize(household, BILL, factorFor(household), target, 'fewest-changes')!;
     expect(result.cuts.find(({ applianceId }) => applianceId === 'tv')?.toHoursPerDay).toBe(2);
     expect(result.cuts.find(({ applianceId }) => applianceId === 'pump')).toBeDefined();
   });
@@ -149,26 +191,26 @@ describe('optimize', () => {
   });
 
   it('returns null with no target or no appliances', () => {
-    expect(optimize(SAMPLE_APPLIANCES, BILL, null, 'fewest-changes')).toBeNull();
-    expect(optimize(SAMPLE_APPLIANCES, BILL, 0, 'fewest-changes')).toBeNull();
-    expect(optimize([], BILL, 2000, 'fewest-changes')).toBeNull();
+    expect(optimize(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES), null, 'fewest-changes')).toBeNull();
+    expect(optimize(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES), 0, 'fewest-changes')).toBeNull();
+    expect(optimize([], BILL, 1, 2000, 'fewest-changes')).toBeNull();
   });
 
   it('leaves kept appliances alone and cuts the asked-for ones first', () => {
-    const kept = optimize(SAMPLE_APPLIANCES, BILL, 2000, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
+    const kept = optimize(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES), 2000, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
     expect(kept.cuts.find(({ applianceId }) => applianceId === 'aircon')).toBeUndefined();
 
     // Aircon alone could cover a ₱3,000 target, but the TV was asked for first, so it goes to its minimum.
-    const plain = optimize(SAMPLE_APPLIANCES, BILL, 3000, 'fewest-changes')!;
+    const plain = optimize(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES), 3000, 'fewest-changes')!;
     expect(plain.cuts.find(({ applianceId }) => applianceId === 'tv')).toBeUndefined();
-    const first = optimize(SAMPLE_APPLIANCES, BILL, 3000, 'fewest-changes', { keep: [], cutFirst: ['tv'] })!;
+    const first = optimize(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES), 3000, 'fewest-changes', { keep: [], cutFirst: ['tv'] })!;
     expect(first.cuts.find(({ applianceId }) => applianceId === 'tv')?.toHoursPerDay).toBe(2);
     expect(first.projectedBill).toBeLessThanOrEqual(3000 + 1e-6);
   });
 
   it('raises the floor when appliances are kept', () => {
     const plain = plan(500).floor;
-    const kept = optimize(SAMPLE_APPLIANCES, BILL, 500, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
+    const kept = optimize(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES), 500, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
     expect(kept.floor).toBeGreaterThan(plain);
   });
 
@@ -184,11 +226,11 @@ describe('strategies', () => {
     { id: 'heater', name: 'Water Heater', category: 'luxury', watts: 1500, hoursPerDay: 1, daysPerWeek: 7 },
     { id: 'fridge', name: 'Refrigerator', category: 'essential', watts: 130, hoursPerDay: 24, daysPerWeek: 7 },
   ];
-  const target = buildBaseline(household, BILL).cost * 0.7;
+  const target = buildBaseline(household, BILL, factorFor(household)).cost * 0.7;
 
   it('fewest changes touches fewer appliances than comfort first', () => {
-    const fewest = optimize(household, BILL, target, 'fewest-changes')!;
-    const comfort = optimize(household, BILL, target, 'comfort-first')!;
+    const fewest = optimize(household, BILL, factorFor(household), target, 'fewest-changes')!;
+    const comfort = optimize(household, BILL, factorFor(household), target, 'comfort-first')!;
     expect(fewest.status).toBe('feasible');
     expect(comfort.status).toBe('feasible');
     expect(fewest.cuts.length).toBeLessThan(comfort.cuts.length);
@@ -196,8 +238,8 @@ describe('strategies', () => {
 
   it('comfort first spreads the hours, so no single appliance takes as many', () => {
     const mostHours = (p: Plan) => Math.max(...p.cuts.map((c) => c.fromHoursPerDay - c.toHoursPerDay));
-    expect(mostHours(optimize(household, BILL, target, 'comfort-first')!)).toBeLessThan(
-      mostHours(optimize(household, BILL, target, 'fewest-changes')!),
+    expect(mostHours(optimize(household, BILL, factorFor(household), target, 'comfort-first')!)).toBeLessThan(
+      mostHours(optimize(household, BILL, factorFor(household), target, 'fewest-changes')!),
     );
   });
 });

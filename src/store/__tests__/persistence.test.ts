@@ -26,9 +26,17 @@ const SAVED: PersistedState = {
     distributionCharge: null,
     taxesCharge: null,
   },
+  // Deliberately not what the kettle and bill would give (150 / 45.465 = 3.299...): a reload must keep this stored value.
+  calibrationFactor: 2.5,
   target: 1500,
   planMode: 'comfort-first',
 };
+
+/** What the kettle household's factor is when computed from its appliances and bill. */
+const KETTLE_FACTOR = 150 / ((1500 * 1 * 7 * 4.33) / 1000);
+
+/** The saved fields as they were written before the factor was stored. */
+const { calibrationFactor: _stored, ...LEGACY } = SAVED;
 
 const envelope = (state: unknown) => JSON.stringify({ version: 1, state });
 
@@ -52,6 +60,29 @@ describe('parsePersistedState', () => {
     expect(persistence.parsePersistedState(persistence.serializePersistedState(state))).toEqual(state);
   });
 
+  it('keeps the stored factor', () => {
+    const { persistence } = load();
+    expect(persistence.parsePersistedState(persistence.serializePersistedState(SAVED))?.calibrationFactor).toBe(2.5);
+  });
+
+  it('computes the factor once for data saved without one', () => {
+    const { persistence } = load();
+    const parsed = persistence.parsePersistedState(envelope(LEGACY));
+    expect(parsed).toEqual({ ...LEGACY, calibrationFactor: expect.any(Number) });
+    expect(parsed?.calibrationFactor).toBeCloseTo(KETTLE_FACTOR, 9);
+  });
+
+  it('uses a factor of 1 for data saved without one and without a bill', () => {
+    const { persistence } = load();
+    const noBill = { ...LEGACY.billSettings, lastBillTotal: null, lastBillKwh: null };
+    expect(persistence.parsePersistedState(envelope({ ...LEGACY, billSettings: noBill }))?.calibrationFactor).toBe(1);
+  });
+
+  it('keeps the same storage version, so old saved data is still read', () => {
+    const { persistence } = load();
+    expect(persistence.STORAGE_VERSION).toBe(1);
+  });
+
   it.each([
     ['nothing stored', null],
     ['text that is not JSON', '{"version":1,'],
@@ -68,6 +99,10 @@ describe('parsePersistedState', () => {
     ['no bill settings', envelope({ ...SAVED, billSettings: null })],
     ['a target that is not a number', envelope({ ...SAVED, target: 'high' })],
     ['an unknown strategy', envelope({ ...SAVED, planMode: 'cheapest' })],
+    ['a factor that is text', envelope({ ...SAVED, calibrationFactor: '2.5' })],
+    ['a factor of zero', envelope({ ...SAVED, calibrationFactor: 0 })],
+    ['a negative factor', envelope({ ...SAVED, calibrationFactor: -1 })],
+    ['a factor that is null', envelope({ ...SAVED, calibrationFactor: null })],
   ])('returns null for %s', (_label, raw) => {
     const { persistence } = load();
     expect(persistence.parsePersistedState(raw)).toBeNull();
@@ -135,8 +170,23 @@ describe('hydrateStore', () => {
     expect(state.billSettings).toEqual(SAVED.billSettings);
     expect(state.target).toBe(1500);
     expect(state.planMode).toBe('comfort-first');
+    expect(state.calibrationFactor).toBe(2.5);
+    expect(state.baseline.calibrationFactor).toBe(2.5);
     expect(state.plan?.target).toBe(1500);
     expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('computes the factor once on load for old saved data that has none', async () => {
+    const { persistence, storage, useAppStore, hydrateStore } = load();
+    await storage.setItem(persistence.STORAGE_KEY, envelope(LEGACY));
+    (storage.setItem as jest.Mock).mockClear();
+
+    await hydrateStore();
+
+    const state = useAppStore.getState();
+    expect(state.calibrationFactor).toBeCloseTo(KETTLE_FACTOR, 9);
+    expect(state.baseline.cost).toBeCloseTo(1800, 6);
+    expect(state.plan).not.toBeNull();
   });
 
   it('keeps the sample household when nothing is saved', async () => {
@@ -146,6 +196,7 @@ describe('hydrateStore', () => {
     expect(state.appliances).toEqual(sample.SAMPLE_APPLIANCES);
     expect(state.billSettings).toEqual(sample.SAMPLE_BILL_SETTINGS);
     expect(state.target).toBe(sample.SAMPLE_TARGET);
+    expect(state.calibrationFactor).toBe(sample.SAMPLE_CALIBRATION_FACTOR);
   });
 
   it('falls back to the sample household on corrupted data without crashing', async () => {
@@ -192,6 +243,18 @@ describe('saving changes', () => {
     expect(saved?.billSettings.lastBillTotal).toBe(4100);
   });
 
+  it('saves the factor when bill settings are saved again', async () => {
+    const { persistence, storage, useAppStore, hydrateStore, sample } = load();
+    await hydrateStore();
+    useAppStore.getState().addAppliance({ name: 'Heater', category: 'luxury', watts: 3000, hoursPerDay: 2, daysPerWeek: 7 });
+    useAppStore.getState().updateBillSettings({ lastBillTotal: 3400, lastBillKwh: 283 });
+    await jest.advanceTimersByTimeAsync(persistence.SAVE_DEBOUNCE_MS);
+
+    const saved = persistence.parsePersistedState(await storage.getItem(persistence.STORAGE_KEY));
+    expect(saved?.calibrationFactor).toBe(useAppStore.getState().calibrationFactor);
+    expect(saved?.calibrationFactor).toBeLessThan(sample.SAMPLE_CALIBRATION_FACTOR);
+  });
+
   it('does not save changes to anything that is not saved state', async () => {
     const { persistence, storage, useAppStore, hydrateStore } = load();
     await hydrateStore();
@@ -224,6 +287,30 @@ describe('saving changes', () => {
     await second.hydrateStore();
     expect(second.useAppStore.getState().target).toBe(1750);
   });
+
+  it('keeps the stored factor across a reload instead of recomputing it', async () => {
+    const first = load();
+    await first.hydrateStore();
+    // Adding an appliance leaves the factor alone, so the saved factor no longer matches the saved appliances.
+    first.useAppStore.getState().addAppliance({ name: 'Heater', category: 'luxury', watts: 3000, hoursPerDay: 2, daysPerWeek: 7 });
+    await first.persistence.flushPersistedState();
+    const before = first.useAppStore.getState();
+    const stored = await first.storage.getItem(first.persistence.STORAGE_KEY);
+    const { computeCalibrationFactor } = require('@/optimizer/bill-calibration') as typeof import('@/optimizer/bill-calibration');
+    expect(computeCalibrationFactor(before.appliances, 3400, 283)).not.toBeCloseTo(before.calibrationFactor, 3);
+
+    const second = load();
+    await second.storage.setItem(second.persistence.STORAGE_KEY, stored as string);
+    await second.hydrateStore();
+
+    const after = second.useAppStore.getState();
+    expect(after.calibrationFactor).toBe(first.sample.SAMPLE_CALIBRATION_FACTOR);
+    expect(after.calibrationFactor).toBe(before.calibrationFactor);
+    expect(after.appliances).toHaveLength(first.sample.SAMPLE_APPLIANCES.length + 1);
+    expect(after.baseline.cost).toBeCloseTo(before.baseline.cost, 9);
+    expect(after.baseline.cost).toBeGreaterThan(3400 + 1);
+    expect(after.plan?.currentEstimate).toBeCloseTo(before.plan!.currentEstimate, 9);
+  });
 });
 
 describe('resetAll', () => {
@@ -244,6 +331,8 @@ describe('resetAll', () => {
     expect(state.billSettings).toEqual(sample.SAMPLE_BILL_SETTINGS);
     expect(state.target).toBe(sample.SAMPLE_TARGET);
     expect(state.planMode).toBe('fewest-changes');
+    expect(state.calibrationFactor).toBe(sample.SAMPLE_CALIBRATION_FACTOR);
+    expect(state.baseline.cost).toBeCloseTo(3400, 6);
     expect(state.plan).not.toBeNull();
     await expect(storage.getItem(persistence.STORAGE_KEY)).resolves.toBeNull();
   });

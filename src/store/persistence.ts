@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
 import type { Appliance, ApplianceCategory, BillSettings, PlanMode } from '@/types/energy';
 
 /**
@@ -8,6 +9,10 @@ import type { Appliance, ApplianceCategory, BillSettings, PlanMode } from '@/typ
  *
  * The key carries the format version. A future format change bumps it, so old data is never read as
  * the new shape: the new version simply finds nothing under its own key and starts from the sample.
+ *
+ * `calibrationFactor` was added without a bump: it is optional on read, and data saved before it
+ * existed gets one computed from the saved appliances and bill when it is loaded (see
+ * parsePersistedState). A bump would have thrown those households away.
  */
 export const STORAGE_VERSION = 1;
 export const STORAGE_KEY = `watt-plan:household:v${STORAGE_VERSION}`;
@@ -18,6 +23,8 @@ export const SAVE_DEBOUNCE_MS = 400;
 export type PersistedState = {
   appliances: Appliance[];
   billSettings: BillSettings;
+  /** Billed kWh / summed appliance kWh, fixed when the bill settings were saved. 1 without a bill. */
+  calibrationFactor: number;
   target: number | null;
   planMode: PlanMode;
 };
@@ -32,7 +39,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const isAmount = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0;
 
-const isAmountOrNull = (value: unknown): value is number | null => value === null || isAmount(value);
+const isFactor = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
+
+const isAmountOrNull =(value: unknown): value is number | null => value === null || isAmount(value);
 
 const isOptional = <T>(value: unknown, check: (v: unknown) => v is T): boolean => value === undefined || check(value);
 
@@ -81,17 +90,26 @@ export function parsePersistedState(raw: string | null): PersistedState | null {
   }
   if (!isRecord(parsed) || parsed.version !== STORAGE_VERSION || !isRecord(parsed.state)) return null;
 
-  const { appliances, billSettings, target, planMode } = parsed.state;
+  const { appliances, billSettings, calibrationFactor, target, planMode } = parsed.state;
   if (
     !Array.isArray(appliances) ||
     !appliances.every(isAppliance) ||
     !isBillSettings(billSettings) ||
+    !isOptional(calibrationFactor, isFactor) ||
     !isAmountOrNull(target) ||
     !PLAN_MODES.includes(planMode as PlanMode)
   ) {
     return null;
   }
-  return { appliances, billSettings, target, planMode: planMode as PlanMode };
+  return {
+    appliances,
+    billSettings,
+    // Saved before the factor was stored: compute it once now, from the saved household.
+    calibrationFactor:
+      (calibrationFactor as number | undefined) ?? computeCalibrationFactor(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),
+    target,
+    planMode: planMode as PlanMode,
+  };
 }
 
 export function serializePersistedState(state: PersistedState): string {
@@ -100,6 +118,7 @@ export function serializePersistedState(state: PersistedState): string {
     state: {
       appliances: state.appliances,
       billSettings: state.billSettings,
+      calibrationFactor: state.calibrationFactor,
       target: state.target,
       planMode: state.planMode,
     },
@@ -163,9 +182,9 @@ export async function clearPersistedState(): Promise<void> {
 }
 
 /**
- * Saves whenever one of the four saved fields changes, after SAVE_DEBOUNCE_MS without another
- * change. Returns a function that stops listening (a save already waiting still happens). Start it after loading, so the load itself is not
- * written straight back.
+ * Saves whenever one of the saved fields changes, after SAVE_DEBOUNCE_MS without another change.
+ * Returns a function that stops listening (a save already waiting still happens). Start it after
+ * loading, so the load itself is not written straight back.
  */
 export function startPersisting<S extends PersistedState>(
   store: { subscribe: (listener: (state: S, previous: S) => void) => () => void },
@@ -175,6 +194,7 @@ export function startPersisting<S extends PersistedState>(
     if (
       state.appliances === previous.appliances &&
       state.billSettings === previous.billSettings &&
+      state.calibrationFactor === previous.calibrationFactor &&
       state.target === previous.target &&
       state.planMode === previous.planMode
     ) {
@@ -184,6 +204,7 @@ export function startPersisting<S extends PersistedState>(
     const snapshot: PersistedState = {
       appliances: state.appliances,
       billSettings: state.billSettings,
+      calibrationFactor: state.calibrationFactor,
       target: state.target,
       planMode: state.planMode,
     };

@@ -62,6 +62,20 @@ export function calibrate(
   };
 }
 
+/**
+ * The factor that scales the appliances' summed kWh to the last bill's kWh: billed kWh / raw kWh.
+ * 1 when there is no usable bill, or no appliance usage to scale. The app computes it once, when
+ * bill settings are saved, and stores it; later appliance edits move the estimate away from the bill.
+ */
+export function computeCalibrationFactor(
+  appliances: Appliance[],
+  lastBillTotal: number | null,
+  lastBillKwh: number | null,
+): number {
+  const { rawKwh, isCalibrated } = calibrate(appliances, lastBillTotal, lastBillKwh);
+  return isCalibrated && rawKwh > 0 && lastBillKwh !== null ? lastBillKwh / rawKwh : 1;
+}
+
 /** A charge as a fraction of the bill total (0.544 = 54.4%). Null when either figure is missing. */
 export function chargeShare(charge: number | null, total: number | null): number | null {
   if (charge === null || total === null || total <= 0) return null;

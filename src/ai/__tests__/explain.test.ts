@@ -1,6 +1,6 @@
 import { computePlan } from '@/optimizer/compute-plan';
 import { buildBaseline } from '@/optimizer/optimizer';
-import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS } from '@/store/sample-household';
+import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '@/store/sample-household';
 import type { PlanChangeAction } from '@/types/chat';
 import { NO_CONSTRAINTS } from '@/types/energy';
 import { formatPeso } from '@/utils/format';
@@ -11,11 +11,11 @@ import { buildExplainFacts } from '../prompts';
 import { NOTHING_TO_ANSWER_REPLY } from '../templates';
 
 const appliances = SAMPLE_APPLIANCES;
-const baseline = buildBaseline(appliances, SAMPLE_BILL_SETTINGS);
-const previous = computePlan(appliances, SAMPLE_BILL_SETTINGS, 3300, 'fewest-changes', NO_CONSTRAINTS)!;
+const baseline = buildBaseline(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR);
+const previous = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 3300, 'fewest-changes', NO_CONSTRAINTS)!;
 const keepAircon: PlanChangeAction = { action: 'keep', applianceIds: ['aircon'] };
-const next = computePlan(appliances, SAMPLE_BILL_SETTINGS, 3300, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
-const unreachable = computePlan(appliances, SAMPLE_BILL_SETTINGS, 100, 'fewest-changes', NO_CONSTRAINTS)!;
+const next = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 3300, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
+const unreachable = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 100, 'fewest-changes', NO_CONSTRAINTS)!;
 
 beforeEach(() => {
   process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key';

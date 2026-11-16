@@ -31,13 +31,18 @@ type Candidate = {
 export function planStub(
   appliances: Appliance[],
   bill: BillSettings,
+  calibrationFactor: number,
   target: number | null,
   mode: PlanMode,
   constraints: PlanConstraints = NO_CONSTRAINTS,
 ): Plan | null {
   if (target === null || target <= 0 || appliances.length === 0) return null;
 
-  const { ratePerKwh, matchedBill: currentEstimate } = calibrate(appliances, bill.lastBillTotal, bill.lastBillKwh);
+  const { ratePerKwh: billRate, rawKwh, isCalibrated } = calibrate(appliances, bill.lastBillTotal, bill.lastBillKwh);
+  // Same scaling as the optimizer's baseline: the stored factor, or none without a bill. Folding it
+  // into the rate prices every kWh the way the baseline does.
+  const ratePerKwh = billRate * (isCalibrated ? calibrationFactor : 1);
+  const currentEstimate = rawKwh * ratePerKwh;
   const needed = Math.max(0, currentEstimate - target);
 
   const candidates = appliances
@@ -57,7 +62,7 @@ export function planStub(
   const kwhSaved = cuts.reduce((sum, cut) => {
     const appliance = appliances.find(({ id }) => id === cut.applianceId);
     if (!appliance) return sum;
-    return sum + monthlyKwh(appliance) - monthlyKwh({ ...appliance, hoursPerDay: cut.toHoursPerDay });
+    return sum + (monthlyKwh(appliance) - monthlyKwh({ ...appliance, hoursPerDay: cut.toHoursPerDay })) * (isCalibrated ? calibrationFactor : 1);
   }, 0);
   const projectedBill = currentEstimate - totalCuts;
   const floor = currentEstimate - candidates.reduce((sum, { maxSaving }) => sum + maxSaving, 0);

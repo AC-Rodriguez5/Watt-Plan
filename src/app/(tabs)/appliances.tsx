@@ -7,18 +7,29 @@ import { AppliancesEmptyState } from '@/components/appliances-empty-state';
 import { Icon } from '@/components/icon';
 import { colors, maxContentWidth, radii, shadows, spacing, typography, fontFamilies } from '@/constants/theme';
 import { effectiveRatePerKwh } from '@/optimizer/appliance-cost';
-import { PLACEHOLDER_ESTIMATES, PLACEHOLDER_MONTHLY_LOAD } from '@/store/placeholder-estimates';
+import { PLACEHOLDER_ESTIMATES } from '@/store/placeholder-estimates';
 import { useAppStore } from '@/store/app-store';
-import { formatPeso } from '@/utils/format';
+import type { AppliancePresetKey } from '@/utils/appliance-presets';
+import { formatPeso, formatWhole } from '@/utils/format';
 
-const QUICK_ADD = ['Refrigerator', 'Stand fan', 'Aircon', 'Smart TV', 'Rice cooker', 'Washing machine'];
+const QUICK_ADD: { label: string; preset: AppliancePresetKey }[] = [
+  { label: 'Refrigerator', preset: 'refrigerator' },
+  { label: 'Stand fan', preset: 'stand-fan' },
+  { label: 'Aircon', preset: 'aircon' },
+  { label: 'Smart TV', preset: 'tv' },
+  { label: 'Rice cooker', preset: 'rice-cooker' },
+  { label: 'Washing machine', preset: 'washer' },
+];
 
 export default function AppliancesScreen() {
   const appliances = useAppStore((state) => state.appliances);
   const billSettings = useAppStore((state) => state.billSettings);
+  const baseline = useAppStore((state) => state.baseline);
   const isEmpty = appliances.length === 0;
 
-  const openAddSheet = () => router.push('/appliance-add');
+  /** Opens the add sheet empty, or pre-filled from a quick-add preset. */
+  const openAddSheet = (preset?: AppliancePresetKey) =>
+    router.push(preset ? { pathname: '/appliance-add', params: { preset } } : '/appliance-add');
   const openEditSheet = (id: string) => router.push({ pathname: '/appliance-edit', params: { id } });
 
   return (
@@ -53,13 +64,13 @@ export default function AppliancesScreen() {
                   <View>
                     <Text style={styles.ribbonLabel}>ESTIMATED MONTHLY LOAD</Text>
                     <View style={styles.ribbonValueRow}>
-                      <Text style={styles.ribbonValue}>{formatPeso(PLACEHOLDER_MONTHLY_LOAD.cost)}</Text>
+                      <Text style={styles.ribbonValue}>{formatPeso(baseline.cost)}</Text>
                       <Text style={styles.ribbonUnit}>/ month</Text>
                     </View>
                   </View>
                   <View style={styles.kwhPill}>
                     <Icon name="bolt" size={16} color={colors.tertiary} />
-                    <Text style={styles.kwhText}>{PLACEHOLDER_MONTHLY_LOAD.kwh} kWh</Text>
+                    <Text style={styles.kwhText}>{formatWhole(baseline.kwh)} kWh</Text>
                   </View>
                 </View>
               </View>
@@ -69,12 +80,12 @@ export default function AppliancesScreen() {
                 showsHorizontalScrollIndicator={false}
                 style={styles.chipScroll}
                 contentContainerStyle={styles.chipRow}>
-                {QUICK_ADD.map((label) => (
+                {QUICK_ADD.map(({ label, preset }) => (
                   <Pressable
                     key={label}
                     accessibilityRole="button"
                     accessibilityLabel={`Add ${label}`}
-                    onPress={openAddSheet}
+                    onPress={() => openAddSheet(preset)}
                     style={({ pressed }) => [styles.quickChip, pressed && styles.quickChipPressed]}>
                     <Icon name="add" size={18} color={colors.primary} />
                     <Text style={styles.quickChipLabel}>{label}</Text>
@@ -111,7 +122,7 @@ export default function AppliancesScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Add custom appliance"
-        onPress={openAddSheet}
+        onPress={() => openAddSheet()}
         style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}>
         <Icon name="add" size={28} color={colors.onPrimary} />
       </Pressable>

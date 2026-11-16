@@ -1,11 +1,11 @@
-import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS } from '@/store/sample-household';
+import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '@/store/sample-household';
 import { NO_CONSTRAINTS, type PlanConstraints } from '@/types/energy';
 
 import { computePlan } from '../compute-plan';
 import { lowestReachableTarget } from '../plan-revision';
 
 const plan = (target: number, constraints: PlanConstraints = NO_CONSTRAINTS) =>
-  computePlan(SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, target, 'fewest-changes', constraints)!;
+  computePlan(SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, target, 'fewest-changes', constraints)!;
 
 describe('lowestReachableTarget', () => {
   it('rounds the floor up to a whole peso', () => {

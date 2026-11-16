@@ -2,16 +2,24 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import type { AppliancePresetKey } from '@/utils/appliance-presets';
 import { formatPeso } from '@/utils/format';
 
 /** Order and wording as drawn in design/screens/appliances_empty.png. */
-const SUGGESTIONS = ['Refrigerator', 'Aircon', 'Stand fan', 'Rice cooker', 'Television', 'Washing machine'];
+const SUGGESTIONS: { label: string; preset: AppliancePresetKey }[] = [
+  { label: 'Refrigerator', preset: 'refrigerator' },
+  { label: 'Aircon', preset: 'aircon' },
+  { label: 'Stand fan', preset: 'stand-fan' },
+  { label: 'Rice cooker', preset: 'rice-cooker' },
+  { label: 'Television', preset: 'tv' },
+  { label: 'Washing machine', preset: 'washer' },
+];
 
 type AppliancesEmptyStateProps = {
   /** Pesos per kWh the estimate uses: the household's own rate, or the default one. */
   ratePerKwh: number;
-  /** Opens the add-appliance sheet. */
-  onAdd: () => void;
+  /** Opens the add-appliance sheet pre-filled from the tapped suggestion. */
+  onAdd: (preset: AppliancePresetKey) => void;
 };
 
 /** Body of the Appliances tab while the list is empty (design/screens/appliances_empty.png). */
@@ -46,12 +54,12 @@ export function AppliancesEmptyState({ ratePerKwh, onAdd }: AppliancesEmptyState
         showsHorizontalScrollIndicator={false}
         style={styles.chipScroll}
         contentContainerStyle={styles.chipRow}>
-        {SUGGESTIONS.map((label) => (
+        {SUGGESTIONS.map(({ label, preset }) => (
           <Pressable
             key={label}
             accessibilityRole="button"
             accessibilityLabel={`Add ${label}`}
-            onPress={onAdd}
+            onPress={() => onAdd(preset)}
             style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}>
             <Icon name="add" size={18} color={colors.primary} />
             <Text style={styles.chipLabel}>{label}</Text>
