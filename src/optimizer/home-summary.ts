@@ -20,7 +20,7 @@ export type HomeSummary = {
   kwh: number;
   /** kg of CO₂ per month. */
   co2Kg: number;
-  /** Pesos per kWh used for every figure above. */
+  /** Pesos per kWh: the estimated bill / kWh. */
   ratePerKwh: number;
   /** Target in pesos, or null when none is set. */
   target: number | null;
@@ -96,7 +96,7 @@ export function averageDailyKwh(appliances: Appliance[]): number {
   return appliances.reduce((sum, { watts, hoursPerDay, daysPerWeek }) => sum + (watts * hoursPerDay * daysPerWeek) / 7 / 1000, 0);
 }
 
-/** True once there is at least one appliance and a last bill (total and kWh) to derive the rate from. */
+/** True once there is at least one appliance and a last bill kWh to calibrate against (the bill total is optional). */
 export function isHomeSetUp(appliances: Appliance[], bill: BillSettings): boolean {
-  return appliances.length > 0 && bill.lastBillTotal !== null && bill.lastBillKwh !== null;
+  return appliances.length > 0 && bill.lastBillKwh !== null;
 }

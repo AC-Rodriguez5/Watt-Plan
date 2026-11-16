@@ -46,10 +46,11 @@ export function billFormFromSettings(bill: BillFigures): BillFormValues {
 
 export type BillValidation = { ok: true; value: BillFigures } | { ok: false; errors: BillFormErrors };
 
-/** The total and kWh are required and above zero. The three charges are optional. */
+/** The kWh is required and above zero. The total, if given, is above zero too. The three charges are optional. */
 export function validateBillForm(values: BillFormValues): BillValidation {
   const errors: BillFormErrors = {};
 
+  /** A field that must hold an amount above zero. `blank` is the error for an empty one. */
   const required = (field: 'total' | 'kwh', blank: string): number | null => {
     if (values[field].trim() === '') {
       errors[field] = blank;
@@ -77,7 +78,7 @@ export function validateBillForm(values: BillFormValues): BillValidation {
     return parsed.value;
   };
 
-  const lastBillTotal = required('total', 'Enter your last bill total');
+  const lastBillTotal = values.total.trim() === '' ? null : required('total', '');
   const lastBillKwh = required('kwh', 'Enter the kWh used');
   const generationCharge = optional('generation');
   const distributionCharge = optional('distribution');

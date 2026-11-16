@@ -34,8 +34,8 @@ export default function PlanScreen() {
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
 
   const { ratePerKwh, isCalibrated } = useMemo(
-    () => calibrate(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),
-    [appliances, billSettings.lastBillTotal, billSettings.lastBillKwh],
+    () => calibrate(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh, billSettings),
+    [appliances, billSettings],
   );
   const utility = billSettings.utility.split(' ')[0];
   const rateSource = isCalibrated ? `Matched to ${utility} bill` : 'Default rate';

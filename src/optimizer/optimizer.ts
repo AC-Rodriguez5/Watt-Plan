@@ -2,15 +2,14 @@ import {
   NO_CONSTRAINTS,
   type Appliance,
   type ApplianceCategory,
-  type BillSettings,
   type Plan,
   type PlanConstraints,
   type PlanCut,
   type PlanMode,
 } from '@/types/energy';
 
-import { CO2_KG_PER_KWH, costForKwh, monthlyKwh, type ApplianceUsage } from './appliance-cost';
-import { calibrate } from './bill-calibration';
+import { CO2_KG_PER_KWH, monthlyKwh, type ApplianceUsage } from './appliance-cost';
+import { billForKwh, isPositive, pricingFor, ratePerKwhAt, type BillInputs, type Pricing } from './pricing';
 
 /** Cuts move in steps of this many hours a day, so the receipt shows tidy figures. */
 export const HOUR_STEP = 0.5;
@@ -22,29 +21,36 @@ const EPSILON = 1e-6;
  * Plain TypeScript, no AI, no network. Every peso and kWh figure in the app comes from here.
  *
  * The model: each appliance's kWh is scaled by one calibration factor (billed kWh / summed appliance
- * kWh at the time the bill settings were saved), so the baseline adds up to the last bill until the
- * appliances change. Cutting hours then removes the same share of that appliance's baseline cost.
+ * kWh at the time the bill settings were saved), so the baseline kWh equals the last bill's kWh until
+ * the appliances change. The household's bill is `billForKwh` of that total (the Meralco formula, or a
+ * custom ₱ per kWh) and each appliance is charged its share of it by kWh. Cutting hours lowers the
+ * total kWh, and the saving is the bill before minus the bill after, split by each appliance's share
+ * of the kWh cut.
  */
 
 export type ApplianceBaseline = {
   appliance: Appliance;
   /** kWh per month, scaled by the calibration factor. */
   kwh: number;
-  /** Pesos per month at the household rate. */
+  /** kWh per month for each hour a day the appliance runs, scaled. */
+  kwhPerDailyHour: number;
+  /** Pesos per month: the household bill split by kWh share. The items' costs add up to `Baseline.cost`. */
   cost: number;
-  /** Pesos per month for each hour a day the appliance runs. */
+  /** Pesos the household bill drops by for each hour a day cut from this appliance, all else unchanged. */
   costPerDailyHour: number;
 };
 
 export type Baseline = {
-  /** Pesos per kWh: last bill total / last bill kWh, or the default rate when no bill is entered. */
+  /** How kWh become pesos for this household. */
+  pricing: Pricing;
+  /** Pesos per kWh: the baseline bill / baseline kWh (quoted at a reference consumption when there is none). */
   ratePerKwh: number;
-  /** The stored factor (billed kWh / summed appliance kWh when the bill was saved). 1 when there is no bill. */
+  /** The stored factor (billed kWh / summed appliance kWh when the bill was saved). 1 without a last bill kWh. */
   calibrationFactor: number;
   isCalibrated: boolean;
   /** kWh per month across all appliances, scaled. */
   kwh: number;
-  /** Pesos per month across all appliances. Equals the last bill total only while the appliances match the saved calibration. */
+  /** Pesos per month for `kwh`. 0 when there is no kWh to bill. */
   cost: number;
   items: ApplianceBaseline[];
 };
@@ -53,48 +59,58 @@ export type Baseline = {
  * Monthly kWh and cost per appliance, each scaled by `storedFactor`: the factor computed when the
  * bill settings were last saved (see computeCalibrationFactor). It is not recomputed here, so adding
  * or editing an appliance changes the estimate instead of being scaled back to the last bill.
- * With no bill to calibrate against the factor is 1, whatever is passed.
+ * With no last bill kWh to calibrate against the factor is 1, whatever is passed.
  */
-export function buildBaseline(
-  appliances: Appliance[],
-  bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>,
-  storedFactor: number,
-): Baseline {
-  const { ratePerKwh, isCalibrated } = calibrate(appliances, bill.lastBillTotal, bill.lastBillKwh);
+export function buildBaseline(appliances: Appliance[], bill: BillInputs, storedFactor: number): Baseline {
+  const pricing = pricingFor(bill);
+  const isCalibrated = isPositive(bill.lastBillKwh);
   const calibrationFactor = isCalibrated ? storedFactor : 1;
 
-  const items = appliances.map<ApplianceBaseline>((appliance) => {
-    const kwh = monthlyKwh(appliance) * calibrationFactor;
+  const kwhs = appliances.map((appliance) => monthlyKwh(appliance) * calibrationFactor);
+  const kwh = kwhs.reduce((sum, value) => sum + value, 0);
+  // No kWh, no estimate: the fixed charges have no appliance to be split onto.
+  const cost = kwh > 0 ? billForKwh(kwh, pricing) : 0;
+
+  const items = appliances.map<ApplianceBaseline>((appliance, index) => {
+    const kwhPerDailyHour = monthlyKwh({ ...appliance, hoursPerDay: 1 }) * calibrationFactor;
     return {
       appliance,
-      kwh,
-      cost: costForKwh(kwh, ratePerKwh),
-      costPerDailyHour: costForKwh(monthlyKwh({ ...appliance, hoursPerDay: 1 }) * calibrationFactor, ratePerKwh),
+      kwh: kwhs[index],
+      kwhPerDailyHour,
+      cost: kwh > 0 ? (cost * kwhs[index]) / kwh : 0,
+      costPerDailyHour: Math.max(0, cost - billForKwh(kwh - kwhPerDailyHour, pricing)),
     };
   });
 
   return {
-    ratePerKwh,
+    pricing,
+    ratePerKwh: ratePerKwhAt(kwh, pricing),
     calibrationFactor,
     isCalibrated,
-    kwh: items.reduce((sum, { kwh }) => sum + kwh, 0),
-    cost: items.reduce((sum, { cost }) => sum + cost, 0),
+    kwh,
+    cost,
     items,
   };
 }
 
 /**
- * One appliance's monthly kWh and cost, scaled exactly like `buildBaseline` scales it, so the add/edit
- * sheet shows the figure the appliance list will show once it is saved. `ratePerKwh` is the rate used.
+ * One appliance's monthly kWh and cost, scaled and priced exactly like `buildBaseline` does it, so the
+ * add/edit sheet shows the figure the appliance list will show once it is saved. `others` are the
+ * household's other appliances: the cost is this appliance's kWh share of the whole household's bill.
+ * `ratePerKwh` is that bill / kWh.
  */
 export function estimateAppliance(
   usage: ApplianceUsage,
-  bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>,
+  bill: BillInputs,
   storedFactor: number,
+  others: Appliance[] = [],
 ): { kwh: number; cost: number; ratePerKwh: number } {
-  const { ratePerKwh, isCalibrated } = calibrate([], bill.lastBillTotal, bill.lastBillKwh);
-  const kwh = monthlyKwh(usage) * (isCalibrated ? storedFactor : 1);
-  return { kwh, cost: costForKwh(kwh, ratePerKwh), ratePerKwh };
+  const pricing = pricingFor(bill);
+  const factor = isPositive(bill.lastBillKwh) ? storedFactor : 1;
+  const kwh = monthlyKwh(usage) * factor;
+  const total = kwh + others.reduce((sum, other) => sum + monthlyKwh(other) * factor, 0);
+  const householdBill = billForKwh(total, pricing);
+  return { kwh, cost: total > 0 ? (householdBill * kwh) / total : 0, ratePerKwh: ratePerKwhAt(total, pricing) };
 }
 
 /**
@@ -111,7 +127,8 @@ export function floorHours(appliance: Appliance, keep: string[] = []): number {
 
 /** The lowest bill the household can reach: every appliance at its floor. Pesos per month. */
 export function lowestBill(baseline: Baseline, constraints: PlanConstraints = NO_CONSTRAINTS): number {
-  return baseline.items.reduce((sum, { appliance, costPerDailyHour }) => sum + costPerDailyHour * floorHours(appliance, constraints.keep), 0);
+  const floorKwh = baseline.items.reduce((sum, { appliance, kwhPerDailyHour }) => sum + kwhPerDailyHour * floorHours(appliance, constraints.keep), 0);
+  return billForKwh(floorKwh, baseline.pricing);
 }
 
 /**
@@ -146,8 +163,13 @@ type CutState = {
  * Plans the cuts that bring the household's bill down to `target`.
  *
  * Luxury is cut first, then flexible, then essential (only down to its minimum hours, and only
- * when it has one). Inside a category the cut with the best pesos saved per sacrifice goes first.
+ * when it has one). Inside a category the cut with the best kWh saved per sacrifice goes first.
  * Appliances in `constraints.cutFirst` go before every category; `constraints.keep` are never cut.
+ *
+ * The bill is not linear in kWh (fixed charges, tiers), so cuts are made one step at a time and the
+ * bill is recomputed after each, until it is at or under `target`. `totalCuts` is the bill before
+ * minus the bill after, and each cut's `saving` is that total split by its share of the kWh cut, so
+ * the cuts' savings add up to `totalCuts` exactly.
  *
  * When the target is below the floor the plan cuts everything to its floor, reports
  * `not-reachable`, and `projectedBill` is that floor: the lowest realistic bill.
@@ -156,7 +178,7 @@ type CutState = {
  */
 export function optimize(
   appliances: Appliance[],
-  bill: Pick<BillSettings, 'lastBillTotal' | 'lastBillKwh'>,
+  bill: BillInputs,
   calibrationFactor: number,
   target: number | null,
   mode: PlanMode,
@@ -167,7 +189,6 @@ export function optimize(
   const baseline = buildBaseline(appliances, bill, calibrationFactor);
   const currentEstimate = baseline.cost;
   const floor = lowestBill(baseline, constraints);
-  const needed = currentEstimate - target;
 
   const states = baseline.items.map<CutState>((item) => ({
     baseline: item,
@@ -175,35 +196,37 @@ export function optimize(
     cut: 0,
   }));
 
-  if (needed > EPSILON) selectCuts(states, needed, STRATEGY_WEIGHTS[mode], constraints.cutFirst);
+  if (currentEstimate - target > EPSILON) selectCuts(states, baseline, target, STRATEGY_WEIGHTS[mode], constraints.cutFirst);
 
-  const cuts = states
+  const changed = states
     .filter(({ cut }) => cut > EPSILON)
-    .map<PlanCut>(({ baseline: { appliance, costPerDailyHour }, floor: stateFloor, cut }) => {
+    .map(({ baseline: { appliance, kwhPerDailyHour }, floor: stateFloor, cut }) => {
       const room = appliance.hoursPerDay - stateFloor;
       // Land exactly on the floor once the whole room is used, so float drift never leaves a sliver.
       const toHoursPerDay = room - cut < EPSILON ? stateFloor : appliance.hoursPerDay - cut;
-      return {
-        applianceId: appliance.id,
-        fromHoursPerDay: appliance.hoursPerDay,
-        toHoursPerDay,
-        saving: costPerDailyHour * (appliance.hoursPerDay - toHoursPerDay),
-      };
-    })
-    .sort((a, b) => b.saving - a.saving);
+      return { appliance, toHoursPerDay, kwhCut: kwhPerDailyHour * (appliance.hoursPerDay - toHoursPerDay) };
+    });
 
-  const totalCuts = cuts.reduce((sum, { saving }) => sum + saving, 0);
-  const kwhSaved = states.reduce((sum, { baseline: { appliance, kwh }, cut }) => {
-    return cut > EPSILON && appliance.hoursPerDay > 0 ? sum + kwh * (cut / appliance.hoursPerDay) : sum;
-  }, 0);
+  const kwhSaved = changed.reduce((sum, { kwhCut }) => sum + kwhCut, 0);
   const feasible = floor <= target + EPSILON;
+  const projectedBill = feasible ? billForKwh(baseline.kwh - kwhSaved, baseline.pricing) : floor;
+  const totalCuts = currentEstimate - projectedBill;
+
+  const cuts = changed
+    .map<PlanCut>(({ appliance, toHoursPerDay, kwhCut }) => ({
+      applianceId: appliance.id,
+      fromHoursPerDay: appliance.hoursPerDay,
+      toHoursPerDay,
+      saving: kwhSaved > 0 ? (totalCuts * kwhCut) / kwhSaved : 0,
+    }))
+    .sort((a, b) => b.saving - a.saving);
 
   return {
     mode,
     status: feasible ? 'feasible' : 'not-reachable',
     target,
     currentEstimate,
-    projectedBill: feasible ? currentEstimate - totalCuts : floor,
+    projectedBill,
     floor,
     totalCuts,
     kwhSaved,
@@ -212,43 +235,48 @@ export function optimize(
   };
 }
 
-/** Cuts hours, one step at a time, until `needed` pesos are saved or nothing is left to cut. Mutates `states`. */
-function selectCuts(states: CutState[], needed: number, weights: Weights, cutFirst: string[]): void {
+/** Cuts hours, one step at a time, until the bill is at or under `target` or nothing is left to cut. Mutates `states`. */
+function selectCuts(states: CutState[], baseline: Baseline, target: number, weights: Weights, cutFirst: string[]): void {
   const isFirst = ({ baseline: { appliance } }: CutState) => cutFirst.includes(appliance.id);
   const tiers = [
     states.filter(isFirst),
     ...CATEGORY_ORDER.map((category) => states.filter((state) => !isFirst(state) && state.baseline.appliance.category === category)),
   ];
 
-  let remaining = needed;
+  let kwh = baseline.kwh;
+  const overTarget = () => billForKwh(kwh, baseline.pricing) > target + EPSILON;
   for (const tier of tiers) {
-    while (remaining > EPSILON) {
-      const next = bestStep(tier, weights);
+    while (overTarget()) {
+      const next = bestStep(tier, weights, baseline.ratePerKwh);
       if (!next) break;
       next.state.cut += next.hours;
-      remaining -= next.saving;
+      kwh -= next.kwh;
     }
-    if (remaining <= EPSILON) return;
+    if (!overTarget()) return;
   }
 }
 
-/** The step with the best pesos saved per sacrifice among `tier`, or null when none has room left. Ties go to the earlier appliance. */
-function bestStep(tier: CutState[], { changePenalty, convexity }: Weights) {
-  let best: { state: CutState; hours: number; saving: number; ratio: number } | null = null;
+/**
+ * The step with the best saving per sacrifice among `tier`, or null when none has room left. Ties go
+ * to the earlier appliance. Steps are ranked by kWh (every kWh cut is worth the same at the margin),
+ * valued at the household's average ₱ per kWh so the ratios stay in pesos.
+ */
+function bestStep(tier: CutState[], { changePenalty, convexity }: Weights, ratePerKwh: number) {
+  let best: { state: CutState; hours: number; kwh: number; ratio: number } | null = null;
 
   for (const state of tier) {
-    const { appliance, costPerDailyHour } = state.baseline;
+    const { appliance, kwhPerDailyHour } = state.baseline;
     const room = appliance.hoursPerDay - state.floor - state.cut;
-    if (room <= EPSILON || costPerDailyHour <= 0) continue;
+    if (room <= EPSILON || kwhPerDailyHour <= 0) continue;
 
     const hours = Math.min(HOUR_STEP, room);
-    const saving = costPerDailyHour * hours;
+    const kwh = kwhPerDailyHour * hours;
     const shareCut = (state.cut + hours / 2) / appliance.hoursPerDay;
     const sacrifice =
       CATEGORY_WEIGHT[appliance.category] * hours * (1 + convexity * shareCut) + (state.cut === 0 ? changePenalty : 0);
-    const ratio = saving / sacrifice;
+    const ratio = (kwh * ratePerKwh) / sacrifice;
 
-    if (!best || ratio > best.ratio + EPSILON) best = { state, hours, saving, ratio };
+    if (!best || ratio > best.ratio + EPSILON) best = { state, hours, kwh, ratio };
   }
   return best;
 }

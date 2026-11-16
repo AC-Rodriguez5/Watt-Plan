@@ -22,15 +22,21 @@ export type Appliance = {
   note?: string;
 };
 
+/** How the household's bill is priced: the Meralco formula, or one effective ₱ per kWh for other utilities. */
+export type RateMode = 'meralco' | 'custom';
+
 export type BillSettings = {
   /** Utility and rate class, e.g. "Meralco Residential". */
   utility: string;
+  rateMode: RateMode;
+  /** Effective ₱ per kWh for the custom mode. Null: use last bill total / last bill kWh when both are known. */
+  customRatePerKwh: number | null;
   /** Billing period as ISO dates (YYYY-MM-DD). */
   periodStart: string;
   periodEnd: string;
-  /** Last bill total in pesos. Null until the user enters it. */
+  /** Last bill total in pesos. Optional: only used to compare with the formula (or to derive a custom rate). */
   lastBillTotal: number | null;
-  /** Last bill usage in kWh. Null until the user enters it. */
+  /** Last bill usage in kWh. Required for calibration; null until the user enters it. */
   lastBillKwh: number | null;
   /** Optional split of the last bill, in pesos. Null for any line the user left blank. */
   generationCharge: number | null;

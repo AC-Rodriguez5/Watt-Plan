@@ -102,7 +102,7 @@ describe('interpretMessage', () => {
     expect(request.url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
     expect(request.init.method).toBe('POST');
     expect(request.init.headers).toMatchObject({ 'x-goog-api-key': 'test-key', 'Content-Type': 'application/json' });
-    expect(request.body.model).toBe('gemini-3.5-flash');
+    expect(request.body.model).toBe('gemini-3.5-flash-lite');
     expect(request.body.response_format).toEqual({ type: 'text', mime_type: 'application/json', schema: INTERPRET_SCHEMA });
 
     const input = JSON.parse(request.body.input);
@@ -141,7 +141,7 @@ describe('interpretMessage', () => {
   it('does not re-ask for a valid answer when the model cannot be reached: it only runs the model chain', async () => {
     const { callsOf } = mockGemini({ interpret: [new TypeError('Network request failed')] });
     await expect(interpretMessage('x', appliances, 2000)).rejects.toBeInstanceOf(AiUnavailableError);
-    // gemini-3.5-flash, its one retry, then gemini-3.5-flash-lite. No extra invalid-answer retry on top.
-    expect(callsOf('interpret').map((request) => request.body.model)).toEqual(['gemini-3.5-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']);
+    // gemini-3.5-flash-lite, its one retry, then gemini-3.5-flash. No extra invalid-answer retry on top.
+    expect(callsOf('interpret').map((request) => request.body.model)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']);
   });
 });

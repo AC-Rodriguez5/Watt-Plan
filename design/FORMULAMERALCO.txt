@@ -1,0 +1,73 @@
+
+1. Core Formulas (Per Line Item)
+
+• Generation Charge (Discountable Base | Vatable)
+Gen = kWh × R_gen
+• Transmission Charge (Discountable Base | Vatable)
+Trans = kWh × (R_trans + R_ancillary)
+• System Loss Charge (Discountable Base | Vatable)
+SysLoss = kWh × R_sysloss
+• Distribution Charge (Meralco) (Discountable Base | Vatable | Tiered by kWh)
+Dist = (kWh × [R_dist_tier + R_supply + R_metering + R_awat_total]) + F_supply + F_metering
+• Senior Citizen Line (Deduction Line if Eligible, else Subsidy)
+	• IF isRegisteredSenior == true AND kWh <= 100: Senior = -0.05 × (Gen + Trans + SysLoss + Dist)
+	• ELSE: Senior = kWh × R_senior_sub
+• Universal Charges (UC) (Non-Discountable | Tax-Exempt)
+UC = kWh × (R_uc_spug + R_uc_red + R_uc_env + R_uc_stranded)
+• FiT-All (Renewable) (Non-Discountable | Tax-Exempt)
+FiT = kWh × R_fit
+• GEA-All (Renewable) (Non-Discountable | Tax-Exempt)
+GEA = kWh × R_gea
+• Lifeline Line (Deduction Line if Eligible, else Subsidy | Tax-Exempt)	
+	• IF isLifelineBeneficiary == true AND kWh <= 100: Lifeline = -P_lifeline_tier × (Gen + Trans + SysLoss + Dist)
+	• ELSE: Lifeline = kWh × R_lifeline_sub
+• Government Taxes & Local Charges (Non-Discountable)
+	• VAT = (Gen × V_gen) + ([kWh × R_trans] × V_trans) + ([kWh × R_ancillary] × V_anc) + (SysLoss × V_sys) + ([Dist + max(0, Senior)] × V_dist)
+	• RPT = kWh × R_rpt
+	• LFT = Gross_Vatable_Base × R_lft (adjusting for Senior/Lifeline discounts)
+	• EnergyTax = Tiered_Energy_Tax(kWh)
+	• GovTaxes = VAT + RPT + LFT + EnergyTax
+• Total Amount Due
+Total_Bill = Gen + Trans + SysLoss + Dist + Senior + UC + FiT + GEA + Lifeline + GovTaxes + Previous_Balance
+
+
+2. Legend & Active Values (November 2026)
+
+
+Variable	Description	Active Value (Nov 2026)
+kWh	Total monthly consumption (Present - Previous Reading)	User Input
+R_gen	Generation Rate	₱10.6349 / kWh
+R_trans	Transmission Wheeling Rate (NGCP)	₱0.7143 / kWh
+R_ancillary	Ancillary Services / Reserves Rate (NGCP)	₱0.4379 / kWh
+R_sysloss	System Loss Rate	₱0.9705 / kWh
+R_dist_tier	Tiered Distribution Rate (1RP)	0–200 kWh: ₱1.0404
+201–300 kWh: ₱1.3532
+301–400 kWh: ₱1.6484
+401+ kWh: ₱2.1627
+R_supply	Supply Variable Rate	₱0.4617 / kWh
+F_supply	Supply Fixed Monthly Charge	₱17.00 / month
+R_metering	Metering Variable Rate	₱0.3126 / kWh
+F_metering	Metering Fixed Monthly Charge	₱6.00 / month
+R_awat_total	Combined Active AWAT Refunds (1 + 2 + 3)	-₱1.1872 / kWh
+R_senior_sub	Senior Citizen Subsidy Rate (if >100 kWh or non-senior)	₱0.0001 / kWh
+R_uc_spug	UC – Missionary Electrification (NPC-SPUG)	₱0.3296 / kWh
+R_uc_red	UC – Missionary Electrification (RED-CI)	₱0.0101 / kWh
+R_uc_env	UC – Environmental Charge	₱0.0025 / kWh
+R_uc_stranded	UC – NPC Stranded Contract Costs	₱0.0428 / kWh
+R_fit	Feed-in Tariff Allowance (FiT-All)	₱0.3359 / kWh
+R_gea	Green Energy Auction Allowance (Suspended)	₱0.0000 / kWh (Base: ₱0.0371)
+R_lifeline_sub	Lifeline Subsidy Rate (if >100 kWh or non-beneficiary)	₱0.0100 / kWh
+P_lifeline_tier	Lifeline Discount Percentage (for 4Ps/Low-Income ≤100 kWh)	0–50 kWh: 100%
+51–70 kWh: 35%
+71–100 kWh: 20%
+V_gen	Generation VAT Rate	9.65%
+V_trans	Transmission Wheeling VAT Rate	11.99%
+V_anc	Ancillary Services VAT Rate	9.36%
+V_sys	System Loss VAT Rate	0.00%
+V_dist	Distribution & Senior Subsidy VAT Rate	12.00%
+R_rpt	Real Property Tax (Charge + Adjustment)	₱0.0105 / kWh
+R_lft	Local Franchise Tax (varies by LGU)	0.50% – 0.75%
+EnergyTax	BP Blg. 36 Energy Tax Tiers	0–650 kWh: ₱0.00
+651–1,000: ₱0.10 / kWh
+1,001–1,500: ₱0.20 / kWh
+1,501+: ₱0.35 / kWh

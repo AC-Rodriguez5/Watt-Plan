@@ -7,7 +7,7 @@ import { ApplianceCard } from '@/components/appliance-card';
 import { AppliancesEmptyState } from '@/components/appliances-empty-state';
 import { Icon } from '@/components/icon';
 import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
-import { effectiveRatePerKwh } from '@/optimizer/appliance-cost';
+import { effectiveRatePerKwh } from '@/optimizer/pricing';
 import { applianceListItems } from '@/optimizer/appliance-list';
 import { oneHourTip } from '@/optimizer/home-summary';
 import { useAppStore } from '@/store/app-store';

@@ -12,9 +12,9 @@ import { NOTHING_TO_ANSWER_REPLY } from '../templates';
 
 const appliances = SAMPLE_APPLIANCES;
 const baseline = buildBaseline(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR);
-const previous = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 3300, 'fewest-changes', NO_CONSTRAINTS)!;
+const previous = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 4400, 'fewest-changes', NO_CONSTRAINTS)!;
 const keepAircon: PlanChangeAction = { action: 'keep', applianceIds: ['aircon'] };
-const next = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 3300, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
+const next = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 4400, 'fewest-changes', { keep: ['aircon'], cutFirst: [] })!;
 const unreachable = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, 100, 'fewest-changes', NO_CONSTRAINTS)!;
 
 beforeEach(() => {

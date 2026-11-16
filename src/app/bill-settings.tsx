@@ -8,6 +8,7 @@ import { BillCalibrationCard } from '@/components/bill-calibration-card';
 import { BillInputCard } from '@/components/bill-input-card';
 import { Icon } from '@/components/icon';
 import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { MERALCO_RATES } from '@/config/meralco-rates';
 import { calibrate } from '@/optimizer/bill-calibration';
 import { useAppStore } from '@/store/app-store';
 import {
@@ -19,7 +20,7 @@ import {
   type BillFormErrors,
   type BillFormValues,
 } from '@/utils/bill-form';
-import { formatPeriod } from '@/utils/billing-period';
+import { formatPeriod, formatRatesAsOf } from '@/utils/billing-period';
 
 /** How long the Save button shows its confirmation. */
 const SAVED_MS = 1800;
@@ -46,8 +47,8 @@ export default function BillSettingsScreen() {
 
   // The summary card follows what is typed, so it previews the result before Save.
   const calibration = useMemo(
-    () => calibrate(appliances, amountOrNull(values.total), amountOrNull(values.kwh)),
-    [appliances, values.total, values.kwh],
+    () => calibrate(appliances, amountOrNull(values.total), amountOrNull(values.kwh), billSettings),
+    [appliances, values.total, values.kwh, billSettings],
   );
 
   const setField = (field: BillField, text: string) => {
@@ -84,6 +85,7 @@ export default function BillSettingsScreen() {
   };
 
   const period = formatPeriod(billSettings.periodStart, billSettings.periodEnd);
+  const ratesAsOf = billSettings.rateMode === 'custom' ? '' : formatRatesAsOf(MERALCO_RATES.asOf);
 
   return (
     <KeyboardAvoidingView behavior="padding" style={styles.screen}>
@@ -108,6 +110,12 @@ export default function BillSettingsScreen() {
                   <Icon name="bolt" size={14} color={colors.tertiary} />
                   <Text style={styles.chipText}>{billSettings.utility}</Text>
                 </View>
+                {ratesAsOf !== '' && (
+                  <View style={styles.chip}>
+                    <Icon name="event" size={14} color={colors.onSurfaceVariant} />
+                    <Text style={styles.chipText}>{ratesAsOf}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -121,7 +129,7 @@ export default function BillSettingsScreen() {
             placeholder="0.00"
             maxLength={12}
             trailing={<Icon name="document_scanner" size={20} color={colors.onSurfaceVariant} />}
-            helper={'"Total Amount Due" on your bill'}
+            helper={'Optional · "Total Amount Due" without any previous balance'}
             helperIcon="check_circle"
             error={errors.total}
           />

@@ -1,7 +1,7 @@
-import { NO_CONSTRAINTS, type Appliance, type BillSettings, type Plan, type PlanConstraints, type PlanCut, type PlanMode } from '@/types/energy';
+import { NO_CONSTRAINTS, type Appliance, type Plan, type PlanConstraints, type PlanCut, type PlanMode } from '@/types/energy';
 
 import { CO2_KG_PER_KWH, monthlyCost, monthlyKwh } from './appliance-cost';
-import { calibrate } from './bill-calibration';
+import { isPositive, pricingFor, ratePerKwhAt, type BillInputs } from './pricing';
 
 /** Cuts are rounded up to this many hours so the receipt shows tidy figures. */
 const HOUR_STEP = 0.5;
@@ -17,6 +17,8 @@ type Candidate = {
 /**
  * FALLBACK ONLY: a simple greedy planner. The app uses `optimize` (optimizer.ts) and only falls
  * back to this one, via computePlan, when the optimizer throws. Same signature and `Plan` result.
+ * It prices every kWh at the household's average ₱ per kWh (a straight-line approximation of the
+ * bill) instead of recomputing the Meralco formula after each cut.
  *
  * - Luxury appliances can be cut to zero. Essential and flexible ones only down to the
  *   minimum hours the household set, and not at all when none is set.
@@ -30,7 +32,7 @@ type Candidate = {
  */
 export function planStub(
   appliances: Appliance[],
-  bill: BillSettings,
+  bill: BillInputs,
   calibrationFactor: number,
   target: number | null,
   mode: PlanMode,
@@ -38,10 +40,11 @@ export function planStub(
 ): Plan | null {
   if (target === null || target <= 0 || appliances.length === 0) return null;
 
-  const { ratePerKwh: billRate, rawKwh, isCalibrated } = calibrate(appliances, bill.lastBillTotal, bill.lastBillKwh);
-  // Same scaling as the optimizer's baseline: the stored factor, or none without a bill. Folding it
-  // into the rate prices every kWh the way the baseline does.
-  const ratePerKwh = billRate * (isCalibrated ? calibrationFactor : 1);
+  // Same scaling as the optimizer's baseline: the stored factor, or none without a last bill kWh.
+  // Folding it into the rate prices every kWh the way the baseline does.
+  const factor = isPositive(bill.lastBillKwh) ? calibrationFactor : 1;
+  const rawKwh = appliances.reduce((sum, appliance) => sum + monthlyKwh(appliance), 0);
+  const ratePerKwh = ratePerKwhAt(rawKwh * factor, pricingFor(bill)) * factor;
   const currentEstimate = rawKwh * ratePerKwh;
   const needed = Math.max(0, currentEstimate - target);
 
@@ -62,7 +65,7 @@ export function planStub(
   const kwhSaved = cuts.reduce((sum, cut) => {
     const appliance = appliances.find(({ id }) => id === cut.applianceId);
     if (!appliance) return sum;
-    return sum + (monthlyKwh(appliance) - monthlyKwh({ ...appliance, hoursPerDay: cut.toHoursPerDay })) * (isCalibrated ? calibrationFactor : 1);
+    return sum + (monthlyKwh(appliance) - monthlyKwh({ ...appliance, hoursPerDay: cut.toHoursPerDay })) * factor;
   }, 0);
   const projectedBill = currentEstimate - totalCuts;
   const floor = currentEstimate - candidates.reduce((sum, { maxSaving }) => sum + maxSaving, 0);

@@ -16,7 +16,7 @@ const keepAircon = { action: 'keep', appliance_ids: ['aircon'], value: null };
 beforeEach(() => {
   process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key';
   useAppStore.setState({ appliances: SAMPLE_APPLIANCES, constraints: NO_CONSTRAINTS, chat: [], assistantStatus: 'ready' });
-  store().setTarget(3300); // keeping the aircon is still feasible here, by cutting the TV and washer
+  store().setTarget(4400); // keeping the aircon is still feasible here, by cutting the TV and washer
   store().setPlanMode('fewest-changes');
   store().refreshPlan(); // constraints were reset above, which does not replan by itself
 });
@@ -211,8 +211,8 @@ describe('undo', () => {
     mockGemini({ interpret: [{ action: 'set_target', appliance_ids: [], value: 1800 }], explain: ['Done.'] });
     await store().sendChatMessage('target 1800');
     undo();
-    expect(store().target).toBe(3300);
-    expect(store().plan?.target).toBe(3300);
+    expect(store().target).toBe(4400);
+    expect(store().plan?.target).toBe(4400);
   });
 
   it('restores the previous minimum hours, including having none', async () => {

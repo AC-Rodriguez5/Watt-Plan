@@ -44,7 +44,7 @@ describe('planApplianceRows', () => {
 
     for (const row of rows) {
       const base = baseline.items.find(({ appliance }) => appliance.id === row.appliance.id)!;
-      expect(row.monthlyCost).toBeCloseTo(base.cost - row.saving, 6);
+      expect(row.monthlyCost).toBeCloseTo(Math.max(0, base.cost - row.saving), 6);
       if (!row.changed) {
         expect(row.saving).toBe(0);
         expect(row.toHoursPerDay).toBe(row.fromHoursPerDay);
@@ -60,15 +60,15 @@ describe('planApplianceRows', () => {
     for (const row of rows) {
       const base = baseline.items.find(({ appliance }) => appliance.id === row.appliance.id)!;
       expect(row.defaultCost).toBe(base.cost);
-      expect(row.defaultCost - row.monthlyCost).toBeCloseTo(row.saving, 6);
+      expect(row.defaultCost - row.monthlyCost).toBeCloseTo(Math.min(row.saving, row.defaultCost), 6);
     }
   });
 
   describe('totals', () => {
     const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
 
-    // Each state has its own baseline: a bill-calibrated household, and one with no bill entered
-    // (default rate, factor 1). Targets are fractions of the current estimate: met already, a
+    // Each state has its own baseline: a bill-calibrated household, and one with no last bill
+    // entered (the formula on the appliances' own kWh, factor 1). Targets are fractions of the current estimate: met already, a
     // moderate cut, a deep cut, and one far below what any household could reach.
     const states = [
       { name: 'normal (bill entered)', bill: SAMPLE_BILL_SETTINGS, factor: SAMPLE_CALIBRATION_FACTOR },
@@ -95,12 +95,26 @@ describe('planApplianceRows', () => {
       expect(sum(rows.map(({ defaultCost }) => defaultCost))).toBeCloseTo(plan.currentEstimate, 4);
     });
 
+    it.each(cases)('$state.name, $target.name, $mode: savings sum to the total savings', ({ state, target, mode }) => {
+      const base = buildBaseline(SAMPLE_APPLIANCES, state.bill, state.factor);
+      const plan = computePlan(SAMPLE_APPLIANCES, state.bill, state.factor, base.cost * target.fraction, mode)!;
+      const rows = planApplianceRows(base, plan);
+
+      expect(sum(rows.map(({ saving }) => saving))).toBeCloseTo(plan.totalCuts, 6);
+      expect(plan.totalCuts).toBeCloseTo(plan.currentEstimate - plan.projectedBill, 6);
+    });
+
+    // A row's cost after the plan is its default cost minus its saving. A saving can be larger than the
+    // row's cost (cutting an appliance entirely can drop the whole bill a distribution tier), and the
+    // row then shows 0 rather than a negative cost. Without such a row the costs add up to the projected bill.
     it.each(cases)('$state.name, $target.name, $mode: optimized costs sum to the projected bill', ({ state, target, mode }) => {
       const base = buildBaseline(SAMPLE_APPLIANCES, state.bill, state.factor);
       const plan = computePlan(SAMPLE_APPLIANCES, state.bill, state.factor, base.cost * target.fraction, mode)!;
       const rows = planApplianceRows(base, plan);
 
-      expect(sum(rows.map(({ monthlyCost }) => monthlyCost))).toBeCloseTo(plan.projectedBill, 4);
+      const shownAsZero = sum(rows.map(({ saving, defaultCost }) => Math.max(0, saving - defaultCost)));
+      expect(sum(rows.map(({ monthlyCost }) => monthlyCost))).toBeCloseTo(plan.projectedBill + shownAsZero, 4);
+      expect(rows.every(({ monthlyCost }) => monthlyCost >= 0)).toBe(true);
     });
 
     it('covers the not-reachable status, where the projected bill is the floor', () => {
@@ -110,7 +124,8 @@ describe('planApplianceRows', () => {
 
       expect(plan.status).toBe('not-reachable');
       expect(plan.projectedBill).toBeCloseTo(plan.floor, 6);
-      expect(sum(rows.map(({ monthlyCost }) => monthlyCost))).toBeCloseTo(plan.floor, 4);
+      const shownAsZero = sum(rows.map(({ saving, defaultCost }) => Math.max(0, saving - defaultCost)));
+      expect(sum(rows.map(({ monthlyCost }) => monthlyCost))).toBeCloseTo(plan.floor + shownAsZero, 4);
     });
 
     it('covers the missing-bill state with an uncalibrated baseline', () => {

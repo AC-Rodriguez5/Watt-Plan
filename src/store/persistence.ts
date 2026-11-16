@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
-import type { Appliance, ApplianceCategory, BillSettings, PlanMode } from '@/types/energy';
+import type { Appliance, ApplianceCategory, BillSettings, PlanMode, RateMode } from '@/types/energy';
 
 /**
  * Saves the user's household (appliances, bill settings, target, strategy) so the app restores it on
@@ -13,6 +13,9 @@ import type { Appliance, ApplianceCategory, BillSettings, PlanMode } from '@/typ
  * `calibrationFactor` was added without a bump: it is optional on read, and data saved before it
  * existed gets one computed from the saved appliances and bill when it is loaded (see
  * parsePersistedState). A bump would have thrown those households away.
+ *
+ * The same goes for the bill settings' `rateMode` and `customRatePerKwh` (the Meralco formula): saves
+ * without them load as Meralco mode with no custom rate.
  */
 export const STORAGE_VERSION = 1;
 export const STORAGE_KEY = `watt-plan:household:v${STORAGE_VERSION}`;
@@ -33,6 +36,7 @@ type Envelope = { version: number; state: PersistedState };
 
 const CATEGORIES: readonly ApplianceCategory[] = ['essential', 'flexible', 'luxury'];
 const PLAN_MODES: readonly PlanMode[] = ['fewest-changes', 'comfort-first'];
+const RATE_MODES: readonly RateMode[] = ['meralco', 'custom'];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,10 +65,17 @@ function isAppliance(value: unknown): value is Appliance {
   );
 }
 
-function isBillSettings(value: unknown): value is BillSettings {
+/** What is stored for bill settings: `rateMode` and `customRatePerKwh` did not exist in older saves. */
+type StoredBillSettings = Omit<BillSettings, 'rateMode' | 'customRatePerKwh'> & Partial<Pick<BillSettings, 'rateMode' | 'customRatePerKwh'>>;
+
+const isRateMode = (value: unknown): value is RateMode => RATE_MODES.includes(value as RateMode);
+
+function isBillSettings(value: unknown): value is StoredBillSettings {
   return (
     isRecord(value) &&
     isString(value.utility) &&
+    isOptional(value.rateMode, isRateMode) &&
+    isOptional(value.customRatePerKwh, isAmountOrNull) &&
     isString(value.periodStart) &&
     isString(value.periodEnd) &&
     isAmountOrNull(value.lastBillTotal) &&
@@ -103,7 +114,7 @@ export function parsePersistedState(raw: string | null): PersistedState | null {
   }
   return {
     appliances,
-    billSettings,
+    billSettings: { ...billSettings, rateMode: billSettings.rateMode ?? 'meralco', customRatePerKwh: billSettings.customRatePerKwh ?? null },
     // Saved before the factor was stored: compute it once now, from the saved household.
     calibrationFactor:
       (calibrationFactor as number | undefined) ?? computeCalibrationFactor(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),

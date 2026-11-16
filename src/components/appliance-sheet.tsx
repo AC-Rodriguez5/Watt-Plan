@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 import { colors, fontFamilies, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
-import { effectiveRatePerKwh } from '@/optimizer/appliance-cost';
+import { effectiveRatePerKwh } from '@/optimizer/pricing';
 import { estimateAppliance } from '@/optimizer/optimizer';
 import { useAppStore } from '@/store/app-store';
 import type { Appliance, ApplianceCategory } from '@/types/energy';
@@ -110,6 +110,7 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
   const insets = useSafeAreaInsets();
 
   const billSettings = useAppStore((state) => state.billSettings);
+  const appliances = useAppStore((state) => state.appliances);
   const calibrationFactor = useAppStore((state) => state.calibrationFactor);
   const addAppliance = useAppStore((state) => state.addAppliance);
   const updateAppliance = useAppStore((state) => state.updateAppliance);
@@ -127,8 +128,10 @@ export function ApplianceSheet(props: ApplianceSheetProps) {
   const showFloor = values.category !== 'luxury';
   const usage = usageFromForm(values);
   // Matched to the bill the same way as the appliance list, so the cost doesn't jump after saving.
-  const estimate = usage ? estimateAppliance(usage, billSettings, calibrationFactor) : null;
-  const rate = effectiveRatePerKwh(billSettings);
+  // The household's other appliances share the bill with this one, so its cost depends on them.
+  const others = props.mode === 'edit' ? appliances.filter(({ id }) => id !== props.appliance.id) : appliances;
+  const estimate = usage ? estimateAppliance(usage, billSettings, calibrationFactor, others) : null;
+  const rate = estimate?.ratePerKwh ?? effectiveRatePerKwh(billSettings);
   const kwh = estimate?.kwh ?? null;
   const cost = estimate?.cost ?? null;
 

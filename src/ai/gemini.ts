@@ -14,11 +14,12 @@ const FLASH_LITE = 'gemini-3.5-flash-lite';
 /**
  * Which model each kind of call prefers, and the other one it falls back to. A call is tried on its
  * preferred model, retried once there, then tried once on the fallback (see `generate`).
- * - interpret needs to follow the schema closely: Flash first.
- * - explain writes two or three sentences: Flash-Lite first.
+ * - interpret: Flash-Lite first. Flash took ~16 s per call (past the timeout) and the free tier caps it
+ *   at 20 requests a day, so it is only the fallback.
+ * - explain writes one or two sentences: Flash-Lite first.
  */
 export const MODELS = {
-  interpret: { primary: FLASH, fallback: FLASH_LITE },
+  interpret: { primary: FLASH_LITE, fallback: FLASH },
   explain: { primary: FLASH_LITE, fallback: FLASH },
 } as const;
 
@@ -77,7 +78,13 @@ async function generateOnce(model: string, apiKey: string, { systemInstruction, 
         ...(schema ? { response_format: { type: 'text', mime_type: 'application/json', schema } } : {}),
       }),
     });
-    if (!response.ok) throw new AiUnavailableError(`${model} responded with HTTP ${response.status}`);
+    if (!response.ok) {
+      let detail = '';
+      try {
+        detail = (await response.text()).slice(0, 300);
+      } catch {}
+      throw new AiUnavailableError(`${model} responded with HTTP ${response.status}${detail ? `: ${detail}` : ''}`);
+    }
     return extractText(await response.json());
   } catch (error) {
     if (error instanceof AiUnavailableError) throw error;
@@ -105,6 +112,7 @@ export async function generate(request: GenerateRequest): Promise<string> {
       return await generateOnce(model, apiKey, request);
     } catch (error) {
       failure = error;
+      console.warn(`Gemini ${request.kind} attempt failed:`, error instanceof Error ? error.message : error);
     }
   }
   throw failure;

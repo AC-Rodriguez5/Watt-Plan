@@ -2,22 +2,24 @@ import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
 import { SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR } from '@/store/sample-household';
 import type { Appliance, Plan, PlanMode } from '@/types/energy';
 
+import { computeBill } from '../meralco-bill';
 import { buildBaseline, estimateAppliance, optimize } from '../optimizer';
 
 const MODES: PlanMode[] = ['fewest-changes', 'comfort-first'];
-const BILL = SAMPLE_BILL_SETTINGS; // ₱3,400 for 283 kWh
+const BILL = SAMPLE_BILL_SETTINGS; // 283 kWh on the last bill, priced by the Meralco formula
 
 /** The factor the app stores when this household's bill settings are saved. */
 const factorFor = (appliances: Appliance[]) => computeCalibrationFactor(appliances, BILL.lastBillTotal, BILL.lastBillKwh);
 
 /** Independent restatement of the model, so the tests do not just echo the implementation. */
-function expectedBill(appliances: Appliance[], hoursOf: (appliance: Appliance) => number): number {
-  const kwh = (a: Appliance, hours: number) => (a.watts * hours * a.daysPerWeek * 4.33) / 1000;
-  const raw = appliances.reduce((sum, a) => sum + kwh(a, a.hoursPerDay), 0);
+const kwhOf = (a: Appliance, hours: number) => (a.watts * hours * a.daysPerWeek * 4.33) / 1000;
+function expectedKwh(appliances: Appliance[], hoursOf: (appliance: Appliance) => number): number {
+  const raw = appliances.reduce((sum, a) => sum + kwhOf(a, a.hoursPerDay), 0);
   const factor = BILL.lastBillKwh! / raw;
-  const rate = BILL.lastBillTotal! / BILL.lastBillKwh!;
-  return appliances.reduce((sum, a) => sum + kwh(a, hoursOf(a)) * factor * rate, 0);
+  return appliances.reduce((sum, a) => sum + kwhOf(a, hoursOf(a)) * factor, 0);
 }
+const expectedBill = (appliances: Appliance[], hoursOf: (appliance: Appliance) => number) =>
+  computeBill(expectedKwh(appliances, hoursOf)).total;
 
 /** Lowest hours: luxury 0, essential and flexible at their minimum (or untouched when they have none). */
 const floorHoursOf = (a: Appliance) => (a.category === 'luxury' ? 0 : (a.minHoursPerDay ?? a.hoursPerDay));
@@ -28,29 +30,73 @@ function plan(target: number, mode: PlanMode = 'fewest-changes', appliances = SA
   return result;
 }
 
+const SAMPLE_BILL_TOTAL = computeBill(283).total;
+
 describe('baseline', () => {
-  it('scales the appliances so they add up to the last bill', () => {
+  it('scales the appliances to the last bill kWh and prices that with the formula', () => {
     const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
     expect(baseline.isCalibrated).toBe(true);
-    expect(baseline.cost).toBeCloseTo(3400, 6);
     expect(baseline.kwh).toBeCloseTo(283, 6);
-    expect(baseline.items.reduce((sum, { cost }) => sum + cost, 0)).toBeCloseTo(3400, 6);
+    expect(baseline.cost).toBeCloseTo(SAMPLE_BILL_TOTAL, 6);
+    expect(baseline.items.reduce((sum, { cost }) => sum + cost, 0)).toBeCloseTo(baseline.cost, 6);
   });
 
-  it('prices each appliance at its calibrated share of the bill', () => {
+  it('charges each appliance its kWh share of the whole bill', () => {
     const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
     const aircon = baseline.items.find(({ appliance }) => appliance.id === 'aircon')!;
     const everything = expectedBill(SAMPLE_APPLIANCES, (a) => a.hoursPerDay);
-    const airconOnly = expectedBill(SAMPLE_APPLIANCES, (a) => (a.id === 'aircon' ? a.hoursPerDay : 0));
-    expect(everything).toBeCloseTo(3400, 6);
-    expect(aircon.cost).toBeCloseTo(airconOnly, 6);
+    const airconKwh = expectedKwh(SAMPLE_APPLIANCES, (a) => (a.id === 'aircon' ? a.hoursPerDay : 0));
+    expect(everything).toBeCloseTo(SAMPLE_BILL_TOTAL, 6);
+    expect(aircon.cost).toBeCloseTo((everything * airconKwh) / 283, 6);
   });
 
-  it('falls back to the default rate and no scaling without a bill', () => {
-    const baseline = buildBaseline(SAMPLE_APPLIANCES, { lastBillTotal: null, lastBillKwh: null }, SAMPLE_CALIBRATION_FACTOR);
+  it('prices with the formula and no scaling without a last bill kWh', () => {
+    const noKwh = { lastBillTotal: 3400, lastBillKwh: null };
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, noKwh, SAMPLE_CALIBRATION_FACTOR);
     expect(baseline.isCalibrated).toBe(false);
     expect(baseline.calibrationFactor).toBe(1);
-    expect(baseline.ratePerKwh).toBe(12.5);
+    const rawKwh = SAMPLE_APPLIANCES.reduce((sum, a) => sum + kwhOf(a, a.hoursPerDay), 0);
+    expect(baseline.kwh).toBeCloseTo(rawKwh, 9);
+    expect(baseline.cost).toBeCloseTo(computeBill(rawKwh).total, 6);
+  });
+
+  it('does not need the last bill total: the kWh alone calibrates', () => {
+    const kwhOnly = { lastBillTotal: null, lastBillKwh: 283 };
+    expect(buildBaseline(SAMPLE_APPLIANCES, kwhOnly, factorFor(SAMPLE_APPLIANCES)).cost).toBeCloseTo(SAMPLE_BILL_TOTAL, 6);
+  });
+
+  it('costs nothing for a household with no appliances', () => {
+    const baseline = buildBaseline([], BILL, 1);
+    expect(baseline.cost).toBe(0);
+    expect(baseline.kwh).toBe(0);
+  });
+});
+
+describe('custom rate mode', () => {
+  const custom = { ...BILL, rateMode: 'custom' as const, customRatePerKwh: 11 };
+
+  it('prices every kWh at the custom rate, linearly', () => {
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, custom, factorFor(SAMPLE_APPLIANCES));
+    expect(baseline.ratePerKwh).toBeCloseTo(11, 9);
+    expect(baseline.cost).toBeCloseTo(283 * 11, 6);
+    for (const item of baseline.items) {
+      expect(item.cost).toBeCloseTo(item.kwh * 11, 9);
+      expect(item.costPerDailyHour).toBeCloseTo(item.kwhPerDailyHour * 11, 9);
+    }
+  });
+
+  it('takes the rate from last bill total / kWh when no custom rate is given (the effective rate)', () => {
+    const derived = { ...BILL, rateMode: 'custom' as const, customRatePerKwh: null };
+    expect(buildBaseline(SAMPLE_APPLIANCES, derived, factorFor(SAMPLE_APPLIANCES)).cost).toBeCloseTo(3400, 6);
+  });
+
+  it('plans against the custom rate: savings are the kWh cut times the rate', () => {
+    const result = optimize(SAMPLE_APPLIANCES, custom, factorFor(SAMPLE_APPLIANCES), 2000, 'fewest-changes')!;
+    expect(result.status).toBe('feasible');
+    expect(result.currentEstimate).toBeCloseTo(283 * 11, 6);
+    expect(result.totalCuts).toBeCloseTo(result.kwhSaved * 11, 6);
+    expect(result.projectedBill).toBeLessThanOrEqual(2000 + 1e-6);
+    expect(result.projectedBill).toBeGreaterThan(1800);
   });
 });
 
@@ -58,13 +104,14 @@ describe('stored calibration factor', () => {
   const PUMP: Appliance = { id: 'pump', name: 'Water Pump', category: 'essential', watts: 750, hoursPerDay: 3, daysPerWeek: 7 };
   const withPump = [...SAMPLE_APPLIANCES, PUMP];
 
-  it('is billed kWh over the appliances kWh, and 1 without a usable bill', () => {
+  it('is billed kWh over the appliances kWh, and 1 without a usable kWh', () => {
     const rawKwh = SAMPLE_APPLIANCES.reduce((sum, a) => sum + (a.watts * a.hoursPerDay * a.daysPerWeek * 4.33) / 1000, 0);
     expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 3400, 283)).toBeCloseTo(283 / rawKwh, 9);
+    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, null, 283)).toBeCloseTo(283 / rawKwh, 9);
     expect(SAMPLE_CALIBRATION_FACTOR).toBeCloseTo(283 / rawKwh, 9);
     expect(computeCalibrationFactor(SAMPLE_APPLIANCES, null, null)).toBe(1);
     expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 3400, null)).toBe(1);
-    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 0, 283)).toBe(1);
+    expect(computeCalibrationFactor(SAMPLE_APPLIANCES, 3400, 0)).toBe(1);
     expect(computeCalibrationFactor([], 3400, 283)).toBe(1);
   });
 
@@ -74,19 +121,19 @@ describe('stored calibration factor', () => {
     expect(after.calibrationFactor).toBe(SAMPLE_CALIBRATION_FACTOR);
     expect(after.cost).toBeGreaterThan(before.cost + 1);
     expect(after.kwh).toBeGreaterThan(before.kwh);
-    // Each appliance already in the household keeps its cost.
-    expect(after.items[0].cost).toBeCloseTo(before.items[0].cost, 9);
-    // Recalibrating (a new factor for the new household) is what brings it back to the bill.
-    expect(buildBaseline(withPump, BILL, factorFor(withPump)).cost).toBeCloseTo(3400, 6);
+    // Recalibrating (a new factor for the new household) is what brings it back to the last bill's kWh.
+    const recalibrated = buildBaseline(withPump, BILL, factorFor(withPump));
+    expect(recalibrated.kwh).toBeCloseTo(283, 6);
+    expect(recalibrated.cost).toBeCloseTo(SAMPLE_BILL_TOTAL, 6);
   });
 
   it('reaches the plan: its current estimate follows the baseline', () => {
     const result = optimize(withPump, BILL, SAMPLE_CALIBRATION_FACTOR, 2000, 'fewest-changes')!;
     expect(result.currentEstimate).toBeCloseTo(buildBaseline(withPump, BILL, SAMPLE_CALIBRATION_FACTOR).cost, 6);
-    expect(result.currentEstimate).toBeGreaterThan(3400);
+    expect(result.currentEstimate).toBeGreaterThan(SAMPLE_BILL_TOTAL);
   });
 
-  it('is ignored without a bill', () => {
+  it('is ignored without a last bill kWh', () => {
     const noBill = { lastBillTotal: null, lastBillKwh: null };
     expect(buildBaseline(withPump, noBill, 7).calibrationFactor).toBe(1);
   });
@@ -96,14 +143,15 @@ describe('estimateAppliance', () => {
   it('gives each appliance the same kWh and cost the baseline gives it', () => {
     const baseline = buildBaseline(SAMPLE_APPLIANCES, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR);
     for (const item of baseline.items) {
-      const estimate = estimateAppliance(item.appliance, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR);
+      const others = SAMPLE_APPLIANCES.filter(({ id }) => id !== item.appliance.id);
+      const estimate = estimateAppliance(item.appliance, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRATION_FACTOR, others);
       expect(estimate.kwh).toBeCloseTo(item.kwh);
       expect(estimate.cost).toBeCloseTo(item.cost);
       expect(estimate.ratePerKwh).toBeCloseTo(baseline.ratePerKwh);
     }
   });
 
-  it('ignores the stored factor while there is no bill, like the baseline', () => {
+  it('ignores the stored factor while there is no last bill kWh, like the baseline', () => {
     const noBill = { lastBillTotal: null, lastBillKwh: null };
     const [aircon] = SAMPLE_APPLIANCES;
     const estimate = estimateAppliance(aircon, noBill, 0.5);
@@ -116,7 +164,7 @@ describe('optimize', () => {
   it.each(MODES)('brings the sample household to a ₱2,000 target (%s)', (mode) => {
     const result = plan(2000, mode);
     expect(result.status).toBe('feasible');
-    expect(result.currentEstimate).toBeCloseTo(3400, 6);
+    expect(result.currentEstimate).toBeCloseTo(SAMPLE_BILL_TOTAL, 6);
     expect(result.projectedBill).toBeLessThanOrEqual(2000 + 1e-6);
     // Cuts move in half-hour steps, so it overshoots by less than one step of the aircon.
     expect(result.projectedBill).toBeGreaterThan(1800);
@@ -134,13 +182,20 @@ describe('optimize', () => {
     expect(aircon.toHoursPerDay % 0.5).toBe(0);
   });
 
-  it('reports the saving of each change in pesos', () => {
-    const result = plan(2000);
-    const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
-    for (const cut of result.cuts) {
-      const item = baseline.items.find(({ appliance }) => appliance.id === cut.applianceId)!;
-      const expected = item.cost * ((cut.fromHoursPerDay - cut.toHoursPerDay) / cut.fromHoursPerDay);
-      expect(cut.saving).toBeCloseTo(expected, 6);
+  it('saves the bill before minus the bill after, and splits it by each change\'s share of the kWh cut', () => {
+    for (const mode of MODES) {
+      const result = plan(2000, mode);
+      const baseline = buildBaseline(SAMPLE_APPLIANCES, BILL, factorFor(SAMPLE_APPLIANCES));
+      const kwhCut = (cut: Plan['cuts'][number]) =>
+        baseline.items.find(({ appliance }) => appliance.id === cut.applianceId)!.kwhPerDailyHour * (cut.fromHoursPerDay - cut.toHoursPerDay);
+
+      expect(result.kwhSaved).toBeCloseTo(result.cuts.reduce((sum, cut) => sum + kwhCut(cut), 0), 9);
+      expect(result.projectedBill).toBeCloseTo(computeBill(baseline.kwh - result.kwhSaved).total, 6);
+      expect(result.totalCuts).toBeCloseTo(result.currentEstimate - result.projectedBill, 6);
+      expect(result.cuts.reduce((sum, { saving }) => sum + saving, 0)).toBeCloseTo(result.totalCuts, 9);
+      for (const cut of result.cuts) {
+        expect(cut.saving).toBeCloseTo((result.totalCuts * kwhCut(cut)) / result.kwhSaved, 9);
+      }
     }
   });
 

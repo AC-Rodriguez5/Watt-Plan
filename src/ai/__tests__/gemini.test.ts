@@ -13,15 +13,15 @@ beforeEach(() => {
 afterEach(() => jest.useRealTimers());
 
 describe('models', () => {
-  it('interpret prefers gemini-3.5-flash and explain prefers gemini-3.5-flash-lite, each falling back to the other', () => {
-    expect(MODELS.interpret).toEqual({ primary: 'gemini-3.5-flash', fallback: 'gemini-3.5-flash-lite' });
+  it('interpret and explain both prefer gemini-3.5-flash-lite, each falling back to gemini-3.5-flash', () => {
+    expect(MODELS.interpret).toEqual({ primary: 'gemini-3.5-flash-lite', fallback: 'gemini-3.5-flash' });
     expect(MODELS.explain).toEqual({ primary: 'gemini-3.5-flash-lite', fallback: 'gemini-3.5-flash' });
   });
 
   it('a healthy call uses only its preferred model, once', async () => {
     const interpret = mockGemini({ interpret: ['{}'] });
     await generate(interpretRequest);
-    expect(models(interpret.sent)).toEqual(['gemini-3.5-flash']);
+    expect(models(interpret.sent)).toEqual(['gemini-3.5-flash-lite']);
 
     const explain = mockGemini({ explain: ['Okay.'] });
     await generate(explainRequest);
@@ -31,7 +31,7 @@ describe('models', () => {
 
 describe('fallback after one failed retry', () => {
   it.each([
-    ['interpret', interpretRequest, ['gemini-3.5-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']],
+    ['interpret', interpretRequest, ['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']],
     ['explain', explainRequest, ['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']],
   ] as const)('%s: preferred model, its retry, then the other model', async (kind, request, expected) => {
     const { sent } = mockGemini({ [kind]: [offline, new HttpStatus(503), 'from the fallback'] });
@@ -42,7 +42,7 @@ describe('fallback after one failed retry', () => {
   it('the retry on the preferred model can succeed, so the fallback is never called', async () => {
     const { sent } = mockGemini({ interpret: [new HttpStatus(500), '{"ok":true}'] });
     expect(await generate(interpretRequest)).toBe('{"ok":true}');
-    expect(models(sent)).toEqual(['gemini-3.5-flash', 'gemini-3.5-flash']);
+    expect(models(sent)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite']);
   });
 
   it('throws only when all three attempts fail', async () => {
@@ -57,7 +57,7 @@ describe('fallback after one failed retry', () => {
     const pending = generate(interpretRequest);
     await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS * 2);
     expect(await pending).toBe('answer from the fallback');
-    expect(models(sent)).toEqual(['gemini-3.5-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']);
+    expect(models(sent)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']);
     expect(REQUEST_TIMEOUT_MS).toBe(8000);
   });
 

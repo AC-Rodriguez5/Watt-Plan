@@ -15,7 +15,7 @@ const MATCH_LABELS: Record<MatchQuality, string> = {
 
 /** Rate and reconciliation card (design/screens/bill_settings.png). Every figure comes from `calibration`. */
 export function BillCalibrationCard({ calibration }: { calibration: Calibration }) {
-  const { ratePerKwh, rawKwh, matchedBill, isCalibrated, gapKwh, variance, match } = calibration;
+  const { ratePerKwh, rawKwh, matchedBill, isCalibrated, yourBill, formulaEstimate, gapKwh, variance, match } = calibration;
   const matchColor = match === 'rough' ? colors.alert : colors.tertiary;
 
   return (
@@ -61,7 +61,7 @@ export function BillCalibrationCard({ calibration }: { calibration: Calibration 
         <LedgerRow
           icon="price_check"
           iconColor={colors.primary}
-          label={isCalibrated ? 'Your bill' : 'Estimate'}
+          label={yourBill !== null ? 'Your bill' : 'Estimate'}
           value={formatPesoExact(matchedBill)}
           valueStyle={styles.valuePrimary}
         />
@@ -73,6 +73,17 @@ export function BillCalibrationCard({ calibration }: { calibration: Calibration 
           valueStyle={styles.valueGreen}
         />
       </View>
+
+      {formulaEstimate !== null && yourBill !== null && (
+        <View style={styles.compare}>
+          <Text style={styles.compareTitle}>Formula estimate vs your bill</Text>
+          <View style={styles.compareRow}>
+            <Text style={styles.compareValue}>{formatPesoExact(formulaEstimate)}</Text>
+            <Text style={styles.compareVs}>vs</Text>
+            <Text style={[styles.compareValue, styles.valuePrimary]}>{formatPesoExact(yourBill)}</Text>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -220,5 +231,28 @@ const styles = StyleSheet.create({
   },
   valueGreen: {
     color: colors.tertiary,
+  },
+  compare: {
+    gap: spacing.xs,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  compareTitle: {
+    ...typography.labelSm,
+    color: colors.onSurfaceVariant,
+  },
+  compareRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+  },
+  compareValue: {
+    ...typography.receiptNumericMd,
+    color: colors.onSurface,
+  },
+  compareVs: {
+    ...typography.labelSm,
+    color: colors.onSurfaceVariant,
   },
 });

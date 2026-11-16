@@ -1,6 +1,7 @@
 /** Billing-period labels. Dates are ISO (YYYY-MM-DD) and read as calendar dates, not instants. */
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MS_PER_DAY = 86_400_000;
 
 function parseIso(iso: string): { month: number; day: number; utc: number } | null {
@@ -34,4 +35,10 @@ export function billingDay(startIso: string, endIso: string, today: Date = new D
   const length = Math.round((end.utc - start.utc) / MS_PER_DAY) + 1;
   const day = Math.round((todayUtc - start.utc) / MS_PER_DAY) + 1;
   return Math.min(Math.max(day, 1), Math.max(length, 1));
+}
+
+/** ("2026-11") -> "Rates as of November 2026". Empty when the month is invalid. */
+export function formatRatesAsOf(asOf: string): string {
+  const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(asOf);
+  return match ? `Rates as of ${MONTH_NAMES[Number(match[2]) - 1]} ${match[1]}` : '';
 }

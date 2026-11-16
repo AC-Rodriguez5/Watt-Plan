@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- jest.resetModules() needs require() to get fresh modules */
+import { computeBill } from '@/optimizer/meralco-bill';
+
 import type { PersistedState } from '../persistence';
 
 /** Fresh copies of the store, persistence and AsyncStorage mock, so each test starts unloaded. */
@@ -22,6 +24,8 @@ const SAVED: PersistedState = {
     periodEnd: '2025-01-31',
     lastBillTotal: 1800,
     lastBillKwh: 150,
+    rateMode: 'meralco',
+    customRatePerKwh: null,
     generationCharge: null,
     distributionCharge: null,
     taxesCharge: null,
@@ -37,6 +41,9 @@ const KETTLE_FACTOR = 150 / ((1500 * 1 * 7 * 4.33) / 1000);
 
 /** The saved fields as they were written before the factor was stored. */
 const { calibrationFactor: _stored, ...LEGACY } = SAVED;
+
+/** Bill settings as they were saved before the Meralco formula: no `rateMode`, no `customRatePerKwh`. */
+const { rateMode: _mode, customRatePerKwh: _custom, ...PRE_FORMULA_BILL } = SAVED.billSettings;
 
 const envelope = (state: unknown) => JSON.stringify({ version: 1, state });
 
@@ -72,6 +79,27 @@ describe('parsePersistedState', () => {
     expect(parsed?.calibrationFactor).toBeCloseTo(KETTLE_FACTOR, 9);
   });
 
+  it('loads data saved without the new rate fields as Meralco mode, keeping everything else', () => {
+    const { persistence } = load();
+    const parsed = persistence.parsePersistedState(envelope({ ...SAVED, billSettings: PRE_FORMULA_BILL }));
+    expect(parsed).toEqual(SAVED);
+    expect(parsed?.billSettings.rateMode).toBe('meralco');
+    expect(parsed?.billSettings.customRatePerKwh).toBeNull();
+  });
+
+  it('loads data saved before both the factor and the rate fields existed', () => {
+    const { persistence } = load();
+    const parsed = persistence.parsePersistedState(envelope({ ...LEGACY, billSettings: PRE_FORMULA_BILL }));
+    expect(parsed?.billSettings).toEqual(SAVED.billSettings);
+    expect(parsed?.calibrationFactor).toBeCloseTo(KETTLE_FACTOR, 9);
+  });
+
+  it('round-trips the custom rate mode', () => {
+    const { persistence } = load();
+    const custom = { ...SAVED, billSettings: { ...SAVED.billSettings, rateMode: 'custom' as const, customRatePerKwh: 11.5 } };
+    expect(persistence.parsePersistedState(persistence.serializePersistedState(custom))).toEqual(custom);
+  });
+
   it('uses a factor of 1 for data saved without one and without a bill', () => {
     const { persistence } = load();
     const noBill = { ...LEGACY.billSettings, lastBillTotal: null, lastBillKwh: null };
@@ -95,6 +123,8 @@ describe('parsePersistedState', () => {
     ['an appliance with a bad category', envelope({ ...SAVED, appliances: [{ ...SAVED.appliances[0], category: 'fancy' }] })],
     ['an appliance with negative watts', envelope({ ...SAVED, appliances: [{ ...SAVED.appliances[0], watts: -5 }] })],
     ['an appliance missing its name', envelope({ ...SAVED, appliances: [{ ...SAVED.appliances[0], name: undefined }] })],
+    ['a rate mode that does not exist', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, rateMode: 'solar' } })],
+    ['a custom rate that is text', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, customRatePerKwh: '11' } })],
     ['bill settings with a text amount', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, lastBillTotal: '1800' } })],
     ['no bill settings', envelope({ ...SAVED, billSettings: null })],
     ['a target that is not a number', envelope({ ...SAVED, target: 'high' })],
@@ -185,7 +215,8 @@ describe('hydrateStore', () => {
 
     const state = useAppStore.getState();
     expect(state.calibrationFactor).toBeCloseTo(KETTLE_FACTOR, 9);
-    expect(state.baseline.cost).toBeCloseTo(1800, 6);
+    expect(state.baseline.kwh).toBeCloseTo(150, 6);
+    expect(state.baseline.cost).toBeCloseTo(computeBill(150).total, 6);
     expect(state.plan).not.toBeNull();
   });
 
@@ -308,7 +339,7 @@ describe('saving changes', () => {
     expect(after.calibrationFactor).toBe(before.calibrationFactor);
     expect(after.appliances).toHaveLength(first.sample.SAMPLE_APPLIANCES.length + 1);
     expect(after.baseline.cost).toBeCloseTo(before.baseline.cost, 9);
-    expect(after.baseline.cost).toBeGreaterThan(3400 + 1);
+    expect(after.baseline.cost).toBeGreaterThan(computeBill(283).total + 1);
     expect(after.plan?.currentEstimate).toBeCloseTo(before.plan!.currentEstimate, 9);
   });
 });
@@ -332,7 +363,7 @@ describe('resetAll', () => {
     expect(state.target).toBe(sample.SAMPLE_TARGET);
     expect(state.planMode).toBe('fewest-changes');
     expect(state.calibrationFactor).toBe(sample.SAMPLE_CALIBRATION_FACTOR);
-    expect(state.baseline.cost).toBeCloseTo(3400, 6);
+    expect(state.baseline.cost).toBeCloseTo(computeBill(283).total, 6);
     expect(state.plan).not.toBeNull();
     await expect(storage.getItem(persistence.STORAGE_KEY)).resolves.toBeNull();
   });
