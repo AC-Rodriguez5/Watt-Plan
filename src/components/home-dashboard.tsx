@@ -78,7 +78,12 @@ function BillCard({ summary, bill }: HomeDashboardProps) {
         </Pressable>
       ) : (
         <>
-          <View style={styles.statusRow}>
+          <View style={styles.targetBox}>
+            <View style={styles.targetAccent} />
+            <View>
+              <Text style={styles.target}>Monthly Target</Text>
+              <Text style={styles.targetValue}>{formatPeso(target)}</Text>
+            </View>
             <View style={[styles.chip, isOverTarget ? styles.chipOver : styles.chipUnder]}>
               <Icon
                 name={isOverTarget ? 'trending_up' : 'check'}
@@ -89,7 +94,6 @@ function BillCard({ summary, bill }: HomeDashboardProps) {
                 {isOverTarget ? `${formatPeso(excess)} over` : headroom > 0 ? `${formatPeso(headroom)} under` : 'On target'}
               </Text>
             </View>
-            <Text style={styles.target}>Target {formatPeso(target)}</Text>
           </View>
 
           <EnergyTrack goalFlex={goalFlex} excessFlex={excessFlex} emptyFlex={emptyFlex} />
@@ -115,6 +119,10 @@ function EnergyTrack({ goalFlex, excessFlex, emptyFlex }: { goalFlex: number; ex
   const [progress] = useState(() => new Animated.Value(0));
   const fillFlex = goalFlex + excessFlex;
   const fillWidth = width * fillFlex;
+  // Flex values that sum to less than 1 leave part of the container empty, so split the filled part
+  // into shares that sum to exactly 1.
+  const goalInner = fillFlex > 0 ? goalFlex / fillFlex : 0;
+  const excessInner = fillFlex > 0 && goalInner < 0.9999 ? 1 - goalInner : 0;
 
   useEffect(() => {
     if (fillWidth <= 0) return;
@@ -153,8 +161,8 @@ function EnergyTrack({ goalFlex, excessFlex, emptyFlex }: { goalFlex: number; ex
       <View style={styles.track}>
         {fillFlex > 0 && (
           <View style={[styles.fill, { flex: fillFlex }]}>
-            {goalFlex > 0 && <View style={[styles.goalFill, { flex: goalFlex }]} />}
-            {excessFlex > 0 && <View style={[styles.excessFill, { flex: excessFlex }]} />}
+            {goalInner > 0 && <View style={[styles.goalFill, { flex: goalInner }]} />}
+            {excessInner > 0 && <View style={[styles.excessFill, { flex: excessInner }]} />}
             {fillWidth > 0 && (
               <Animated.View pointerEvents="none" style={[styles.pulse, { transform: [{ translateX }] }]}>
                 <Svg width={PULSE_WIDTH} height={TRACK_HEIGHT}>
@@ -288,10 +296,29 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: colors.outline,
   },
-  statusRow: {
+  // Holds the target and its over/under badge as one unit.
+  targetBox: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: spacing.sm,
+    paddingVertical: 12,
+    paddingLeft: spacing.md,
+    paddingRight: 12,
+    overflow: 'hidden',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.surfaceContainerHigh,
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  // A slim cobalt edge marks the target as the line the bar below is measured against.
+  targetAccent: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 4,
+    backgroundColor: colors.primary,
   },
   chip: {
     flexDirection: 'row',
@@ -315,6 +342,14 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     fontFamily: fontFamilies.inter.medium,
     color: colors.onSurfaceVariant,
+  },
+  // A step up from the label, not a rival to the estimated bill above it.
+  targetValue: {
+    fontFamily: fontFamilies.mono.bold,
+    fontSize: 20,
+    lineHeight: 26,
+    letterSpacing: -0.6,
+    color: colors.primary,
   },
   // Tall enough for the bolt, which overlaps the bar's centre line.
   trackArea: {

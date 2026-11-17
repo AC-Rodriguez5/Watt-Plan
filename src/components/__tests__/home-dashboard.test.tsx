@@ -37,7 +37,7 @@ describe('Home dashboard (bill at a glance)', () => {
     const { summary, shown } = await render(2000);
     expect(summary.isOverTarget).toBe(true);
     expect(shown).toContain(`${formatPeso(summary.excess)} over`);
-    expect(shown).toContain(`Target ${formatPeso(2000)}`);
+    expect(shown).toContain(`Monthly Target${formatPeso(2000)}`);
   });
 
   it('says how far under the target the bill is', async () => {
