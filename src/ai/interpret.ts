@@ -1,7 +1,7 @@
 import type { ChatAction } from '@/types/chat';
 import type { Appliance } from '@/types/energy';
 
-import { generate } from './gemini';
+import { generate } from './llm';
 import { buildInterpretInput, INTERPRET_ACTIONS, INTERPRET_SCHEMA, INTERPRET_SYSTEM } from './prompts';
 
 /** Sane range for a monthly bill target, in pesos. */

@@ -121,7 +121,7 @@ export default function PlanScreen() {
                 accessibilityLabel="Change the plan"
                 onPress={() => router.push('/plan-chat')}
                 style={({ pressed }) => [styles.pillButton, styles.outlinedPill, pressed && styles.outlinedPillPressed]}>
-                <Icon name="tune" size={20} color={colors.onSurface} />
+                <Icon name="chat" size={20} color={colors.onSurface} />
                 <Text style={styles.outlinedLabel}>Change the plan</Text>
               </Pressable>
             </View>
@@ -132,7 +132,7 @@ export default function PlanScreen() {
                 accessibilityLabel="Change the plan"
                 onPress={() => router.push('/plan-chat')}
                 style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}>
-                <Icon name="tune" size={22} color={colors.onPrimary} />
+                <Icon name="chat" size={22} color={colors.onPrimary} />
                 <Text style={styles.buttonLabel}>Change the plan</Text>
               </Pressable>
             </View>

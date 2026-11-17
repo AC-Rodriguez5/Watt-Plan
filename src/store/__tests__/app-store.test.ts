@@ -1,4 +1,4 @@
-import { mockGemini } from '@/ai/__mocks__/gemini-fetch';
+import { mockLlm } from '@/ai/__mocks__/llm-fetch';
 
 import { computeCalibrationFactor } from '@/optimizer/bill-calibration';
 import { summarizeHome } from '@/optimizer/home-summary';
@@ -62,7 +62,8 @@ describe('shared plan', () => {
 
   it('keeps the chat constraints when the household changes', async () => {
     process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key';
-    mockGemini({ interpret: [{ action: 'keep', appliance_ids: ['aircon'], value: null }], explain: ['Okay.'] });
+    process.env.EXPO_PUBLIC_GROQ_API_KEY = 'test-groq-key';
+    mockLlm({ interpret: [{ action: 'keep', appliance_ids: ['aircon'], value: null }], explain: ['Okay.'] });
     await useAppStore.getState().sendChatMessage("I can't cut the aircon");
     expect(cutsAircon()).toBe(false);
     useAppStore.getState().setTarget(2200);

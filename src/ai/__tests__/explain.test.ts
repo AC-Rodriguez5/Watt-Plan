@@ -5,7 +5,7 @@ import type { PlanChangeAction } from '@/types/chat';
 import { NO_CONSTRAINTS } from '@/types/energy';
 import { formatPeso } from '@/utils/format';
 
-import { HttpStatus, mockGemini } from '../__mocks__/gemini-fetch';
+import { HttpStatus, mockLlm } from '../__mocks__/llm-fetch';
 import { answerFromPlan, explainPlanChange, usesOnlyGivenNumbers } from '../explain';
 import { buildExplainFacts } from '../prompts';
 import { NOTHING_TO_ANSWER_REPLY } from '../templates';
@@ -19,6 +19,7 @@ const unreachable = computePlan(appliances, SAMPLE_BILL_SETTINGS, SAMPLE_CALIBRA
 
 beforeEach(() => {
   process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key';
+  process.env.EXPO_PUBLIC_GROQ_API_KEY = 'test-groq-key';
 });
 
 describe('usesOnlyGivenNumbers', () => {
@@ -39,24 +40,24 @@ describe('usesOnlyGivenNumbers', () => {
 
 describe('explainPlanChange', () => {
   it('sends the old and new plan from the optimizer, the change and the message', async () => {
-    const { callsOf } = mockGemini({ explain: ['Okay, the aircon stays.'] });
+    const { callsOf } = mockLlm({ explain: ['Okay, the aircon stays.'] });
     await explainPlanChange("keep the aircon, can't cut it", keepAircon, appliances, previous, next);
 
     const [request] = callsOf('explain');
-    expect(request.body.response_format).toBeUndefined(); // plain text, not JSON
-    const facts = JSON.parse(request.body.input);
+    expect(request.schema).toBeUndefined(); // plain text, not JSON
+    const facts = JSON.parse(request.input);
     expect(facts.user_message).toBe("keep the aircon, can't cut it");
     expect(facts.change).toEqual({ type: 'keep_untouched', appliances: ['Inverter Aircon'] });
     expect(facts.plan_before.projected_bill_pesos).toBe(Math.round(previous.projectedBill));
     expect(facts.plan_after.projected_bill_pesos).toBe(Math.round(next.projectedBill));
     expect(facts.plan_after.cuts.map((cut: { appliance: string }) => cut.appliance)).not.toContain('Inverter Aircon');
-    expect(request.body.system_instruction).toMatch(/1 or 2 short sentences, under 30 words/);
-    expect(request.body.system_instruction).toMatch(/Taglish/);
+    expect(request.system).toMatch(/1 or 2 short sentences, under 30 words/);
+    expect(request.system).toMatch(/Taglish/);
   });
 
   it("returns the model's text when it only uses given numbers", async () => {
     const projected = formatPeso(next.projectedBill);
-    mockGemini({ explain: [`Okay, the aircon stays. Your projected bill is ${projected}.`] });
+    mockLlm({ explain: [`Okay, the aircon stays. Your projected bill is ${projected}.`] });
     expect(await explainPlanChange('keep aircon', keepAircon, appliances, previous, next)).toBe(
       `Okay, the aircon stays. Your projected bill is ${projected}.`,
     );
@@ -72,23 +73,24 @@ describe('explainPlanChange', () => {
       ['the model answers with nothing', ''],
       ['the model invents a number', 'Okay! That saves you ₱777 every month.'],
     ])('when %s', async (_name, answer) => {
-      mockGemini({ explain: [answer] });
+      mockLlm({ explain: [answer] });
       expect(await explainPlanChange('keep aircon', keepAircon, appliances, previous, next)).toBe(template);
     });
 
     it('when the API key is missing, without calling the network', async () => {
       delete process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-      const { fetchMock } = mockGemini({});
+      delete process.env.EXPO_PUBLIC_GROQ_API_KEY;
+      const { fetchMock } = mockLlm({});
       expect(await explainPlanChange('keep aircon', keepAircon, appliances, previous, next)).toBe(template);
       expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it('on a timeout, after three 8 second attempts (preferred model, retry, fallback model)', async () => {
+    it('on a timeout, after six 8 second attempts (two per model, three models)', async () => {
       jest.useFakeTimers();
       try {
-        mockGemini({ explain: ['hang'] });
+        mockLlm({ explain: ['hang'] });
         const pending = explainPlanChange('keep aircon', keepAircon, appliances, previous, next);
-        await jest.advanceTimersByTimeAsync(3 * 8000);
+        await jest.advanceTimersByTimeAsync(6 * 8000);
         expect(await pending).toBe(template);
       } finally {
         jest.useRealTimers();
@@ -96,7 +98,7 @@ describe('explainPlanChange', () => {
     });
 
     it('says so plainly when the target cannot be reached', async () => {
-      mockGemini({ explain: [new TypeError('Network request failed')] });
+      mockLlm({ explain: [new TypeError('Network request failed')] });
       const text = await explainPlanChange('set target 100', { action: 'set_target', target: 100 }, appliances, previous, unreachable);
       expect(text).toBe(
         `Okay, your target is now ₱100. I can't reach your ₱100 target, so I cut as far as I can. The lowest bill is ${formatPeso(unreachable.floor)}.`,
@@ -107,22 +109,22 @@ describe('explainPlanChange', () => {
 
 describe('answerFromPlan', () => {
   it('sends the current plan and per-appliance costs, never the old/new pair', async () => {
-    const { callsOf } = mockGemini({ answer: ['The aircon costs the most.'] });
+    const { callsOf } = mockLlm({ answer: ['The aircon costs the most.'] });
     await answerFromPlan('why is my bill high?', 'question', next, baseline, appliances);
 
-    const facts = JSON.parse(callsOf('answer')[0].body.input);
+    const facts = JSON.parse(callsOf('answer')[0].input);
     expect(facts.current_plan.projected_bill_pesos).toBe(Math.round(next.projectedBill));
     expect(facts.plan_before).toBeUndefined();
     expect(facts.appliance_monthly_costs).toHaveLength(appliances.length);
   });
 
   it("returns the model's answer", async () => {
-    mockGemini({ answer: ['Ang aircon ang pinakamalaki sa bill mo.'] });
+    mockLlm({ answer: ['Ang aircon ang pinakamalaki sa bill mo.'] });
     expect(await answerFromPlan('bakit mataas bill ko?', 'question', next, baseline, appliances)).toBe('Ang aircon ang pinakamalaki sa bill mo.');
   });
 
   it('falls back to a template from the plan when the call fails', async () => {
-    mockGemini({ answer: [new TypeError('Network request failed')] });
+    mockLlm({ answer: [new TypeError('Network request failed')] });
     const text = await answerFromPlan('why is my bill high?', 'question', next, baseline, appliances);
     expect(text).toBe(
       `Your estimated bill is ${formatPeso(next.currentEstimate)} against a ${formatPeso(next.target)} target. Inverter Aircon is the biggest part of it.`,
@@ -130,12 +132,12 @@ describe('answerFromPlan', () => {
   });
 
   it('falls back to a pointer to what the assistant can do for "none"', async () => {
-    mockGemini({ answer: [new HttpStatus(500)] });
+    mockLlm({ answer: [new HttpStatus(500)] });
     expect(await answerFromPlan('thanks', 'none', next, baseline, appliances)).toBe(NOTHING_TO_ANSWER_REPLY);
   });
 
   it('drops an answer that invents a figure', async () => {
-    mockGemini({ answer: ['You would save ₱4,321 by turning everything off.'] });
+    mockLlm({ answer: ['You would save ₱4,321 by turning everything off.'] });
     expect(await answerFromPlan('what if', 'question', next, baseline, appliances)).toMatch(/Your estimated bill is/);
   });
 });

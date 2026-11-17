@@ -2,7 +2,7 @@ import type { Baseline } from '@/optimizer/optimizer';
 import type { PlanChangeAction } from '@/types/chat';
 import type { Appliance, Plan } from '@/types/energy';
 
-import { generate } from './gemini';
+import { generate } from './llm';
 import { ANSWER_SYSTEM, buildAnswerFacts, buildExplainFacts, EXPLAIN_SYSTEM } from './prompts';
 import { answerTemplate, revisionTemplate } from './templates';
 

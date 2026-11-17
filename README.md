@@ -38,7 +38,7 @@ The core rule: **the AI never computes numbers.** All money and kWh math is plai
 | Path | Responsibility |
 | --- | --- |
 | `src/optimizer/` | Pure TypeScript, no AI, no network. Appliance kWh and cost, bill calibration, the Meralco bill formula, the plan optimizer, applying chat actions to plan inputs. |
-| `src/ai/` | Calls Gemini to (1) interpret a user message into a constrained JSON action and (2) explain a plan change in a sentence or two. Model output is validated in code before anything is applied. |
+| `src/ai/` | Calls a hosted LLM (Groq, then Gemini) to (1) interpret a user message into a constrained JSON action and (2) explain a plan change in a sentence or two. Model output is validated in code before anything is applied. |
 | `src/store/` | One shared Zustand store, so Home, Plan, and Plan chat always show the same plan. Household data is persisted with AsyncStorage; plan and baseline are recomputed on launch. |
 | `src/config/meralco-rates.ts` | Every Meralco rate, charge, and tax value in one file. When new rates are published, update the numbers and `asOf` here and nothing else. |
 | `src/types/` | Shared domain types (`Appliance`, `BillSettings`, `Plan`, chat types). |
@@ -57,7 +57,7 @@ Each appliance's kWh is scaled by one calibration factor (billed kWh ÷ summed a
 
 Chat messages map to one of these actions: `keep`, `cut_first`, `set_target`, `set_min_hours`, `question`, `none`. The model returns JSON against a schema; `src/ai/interpret.ts` checks the action, appliance IDs, and number ranges before the optimizer applies it. If the model is unreachable (no key, no network, timeout), the chat shows an unavailable state and the plan itself is unaffected.
 
-Models are called through the Gemini Interactions API (`src/ai/gemini.ts`): `gemini-3.5-flash-lite` first (one retry), then `gemini-3.5-flash` as a fallback, each with an 8-second timeout.
+Models are tried in this order (`src/ai/llm.ts`): Groq `openai/gpt-oss-120b`, Groq `openai/gpt-oss-20b`, then Gemini `gemini-3.5-flash-lite` (Interactions API), then the local template. A 429 (or any other 4xx, or an empty answer) moves to the next model at once; a 5xx, timeout or network failure is retried once first. Each attempt has an 8-second timeout, and a model whose key is not set is skipped. Calls use the lowest reasoning effort and read only the final answer (`message.content` on Groq), never the reasoning. The console logs which provider and model answered, never a key.
 
 ## Getting started
 
@@ -65,13 +65,13 @@ Models are called through the Gemini Interactions API (`src/ai/gemini.ts`): `gem
 
 - Node.js and npm
 - An Android device or emulator (Expo Go works for quick tries; a [development build](https://docs.expo.dev/develop/development-builds/introduction/) is needed if you add native modules)
-- A free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (only needed for Plan chat)
+- A free [Groq API key](https://console.groq.com/keys) and/or a free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (only needed for Plan chat)
 
 ### Setup
 
 ```bash
 npm install
-cp .env.example .env     # then set EXPO_PUBLIC_GEMINI_API_KEY in .env
+cp .env.example .env     # then set EXPO_PUBLIC_GROQ_API_KEY and/or EXPO_PUBLIC_GEMINI_API_KEY in .env
 npx expo start
 ```
 
@@ -79,7 +79,7 @@ Press `a` in the terminal to open on an Android device or emulator, or scan the 
 
 > **Note:** `EXPO_PUBLIC_` variables are inlined into the app bundle, so the key is visible in a shipped build. Fine for development; use a backend proxy before publishing widely.
 
-Without a key the app still works: Home, Appliances, and Plan all run on the local optimizer. Only Plan chat shows its "unavailable" state.
+Without any key the app still works: Home, Appliances, and Plan all run on the local optimizer. Only Plan chat shows its "unavailable" state.
 
 ### Scripts
 

@@ -83,6 +83,9 @@ export const colors = {
   onAlertContainer: '#7c2d12',
   /** Action text on alertContainer */
   alertAction: '#c2410c',
+
+  // Switched off (plan list rows cut to 0 hours a day)
+  switchedOff: '#facc15',
 } as const;
 
 export type ColorToken = keyof typeof colors;

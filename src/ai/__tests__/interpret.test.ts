@@ -1,7 +1,7 @@
 import { SAMPLE_APPLIANCES } from '@/store/sample-household';
 
-import { mockGemini } from '../__mocks__/gemini-fetch';
-import { AiUnavailableError } from '../gemini';
+import { mockLlm } from '../__mocks__/llm-fetch';
+import { AiUnavailableError } from '../llm';
 import { interpretMessage, MAX_TARGET, MIN_TARGET, validateInterpretation } from '../interpret';
 import { INTERPRET_SCHEMA } from '../prompts';
 
@@ -92,20 +92,23 @@ describe('interpretMessage', () => {
 
   beforeEach(() => {
     process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'test-key';
+    process.env.EXPO_PUBLIC_GROQ_API_KEY = 'test-groq-key';
   });
 
   it('sends the message, appliances and target with the JSON schema in structured-output mode', async () => {
-    const { callsOf } = mockGemini({ interpret: [keepFan] });
+    const { callsOf } = mockLlm({ interpret: [keepFan] });
     await interpretMessage("I can't cut the fan", appliances, 2000);
 
     const [request] = callsOf('interpret');
-    expect(request.url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions');
+    expect(request.provider).toBe('groq');
+    expect(request.url).toBe('https://api.groq.com/openai/v1/chat/completions');
     expect(request.init.method).toBe('POST');
-    expect(request.init.headers).toMatchObject({ 'x-goog-api-key': 'test-key', 'Content-Type': 'application/json' });
-    expect(request.body.model).toBe('gemini-3.5-flash-lite');
-    expect(request.body.response_format).toEqual({ type: 'text', mime_type: 'application/json', schema: INTERPRET_SCHEMA });
+    expect(request.init.headers).toMatchObject({ Authorization: 'Bearer test-groq-key', 'Content-Type': 'application/json' });
+    expect(request.model).toBe('openai/gpt-oss-120b');
+    expect(request.schema).toEqual(INTERPRET_SCHEMA);
+    expect(request.body.response_format.type).toBe('json_schema');
 
-    const input = JSON.parse(request.body.input);
+    const input = JSON.parse(request.input);
     expect(input.message).toBe("I can't cut the fan");
     expect(input.current_monthly_target_pesos).toBe(2000);
     expect(input.appliances).toContainEqual({ id: 'stand-fan', name: 'Stand Fan', category: 'essential', hours: 14 });
@@ -113,35 +116,42 @@ describe('interpretMessage', () => {
   });
 
   it('returns the validated action', async () => {
-    mockGemini({ interpret: [keepFan] });
+    mockLlm({ interpret: [keepFan] });
     expect(await interpretMessage('x', appliances, 2000)).toEqual({ kind: 'ok', action: { action: 'keep', applianceIds: ['stand-fan'] } });
   });
 
   it('retries once after an invalid answer, telling the model what was wrong', async () => {
-    const { callsOf } = mockGemini({ interpret: [bad, keepFan] });
+    const { callsOf } = mockLlm({ interpret: [bad, keepFan] });
     expect(await interpretMessage('x', appliances, 2000)).toMatchObject({ kind: 'ok' });
 
     expect(callsOf('interpret')).toHaveLength(2);
-    expect(JSON.parse(callsOf('interpret')[0].body.input).your_previous_answer_was_rejected_because).toBeUndefined();
-    expect(JSON.parse(callsOf('interpret')[1].body.input).your_previous_answer_was_rejected_because).toMatch(/microwave/);
+    expect(JSON.parse(callsOf('interpret')[0].input).your_previous_answer_was_rejected_because).toBeUndefined();
+    expect(JSON.parse(callsOf('interpret')[1].input).your_previous_answer_was_rejected_because).toMatch(/microwave/);
   });
 
   it('retries once after a reply that is not JSON', async () => {
-    const { callsOf } = mockGemini({ interpret: ['Sure! I will keep the fan.', keepFan] });
+    const { callsOf } = mockLlm({ interpret: ['Sure! I will keep the fan.', keepFan] });
     expect(await interpretMessage('x', appliances, 2000)).toMatchObject({ kind: 'ok' });
     expect(callsOf('interpret')).toHaveLength(2);
   });
 
   it('gives up after the second invalid answer: no third call', async () => {
-    const { callsOf } = mockGemini({ interpret: [bad] });
+    const { callsOf } = mockLlm({ interpret: [bad] });
     expect(await interpretMessage('x', appliances, 2000)).toEqual({ kind: 'invalid' });
     expect(callsOf('interpret')).toHaveLength(2);
   });
 
-  it('does not re-ask for a valid answer when the model cannot be reached: it only runs the model chain', async () => {
-    const { callsOf } = mockGemini({ interpret: [new TypeError('Network request failed')] });
+  it('does not re-ask for a valid answer when no model can be reached: it only runs the model chain', async () => {
+    const { callsOf } = mockLlm({ interpret: [new TypeError('Network request failed')] });
     await expect(interpretMessage('x', appliances, 2000)).rejects.toBeInstanceOf(AiUnavailableError);
-    // gemini-3.5-flash-lite, its one retry, then gemini-3.5-flash. No extra invalid-answer retry on top.
-    expect(callsOf('interpret').map((request) => request.body.model)).toEqual(['gemini-3.5-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.5-flash']);
+    // Each of the three models, with its one retry. No extra invalid-answer retry on top.
+    expect(callsOf('interpret').map((request) => request.model)).toEqual([
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'openai/gpt-oss-20b',
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash-lite',
+    ]);
   });
 });

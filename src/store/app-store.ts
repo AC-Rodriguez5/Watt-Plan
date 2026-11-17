@@ -177,9 +177,9 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
 
 /**
  * The chat pipeline for one user message (the message is already in `chat`).
- *   1. interpret: Gemini turns the message into a validated action. Unreachable -> the offline reply.
+ *   1. interpret: the model turns the message into a validated action. Unreachable -> the offline reply.
  *   2. apply: the action changes the target, minimum hours or constraints, and the optimizer replans.
- *   3. explain: Gemini words the old and new plan, or a template does when it cannot.
+ *   3. explain: the model words the old and new plan, or a template does when it cannot.
  * Question and none skip step 2. Every figure shown comes from the optimizer, never from AI text.
  */
 async function respondTo(text: string): Promise<void> {

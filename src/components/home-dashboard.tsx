@@ -395,8 +395,11 @@ const styles = StyleSheet.create({
   actionCirclePressed: {
     backgroundColor: colors.surfaceContainerHigh,
   },
+  // The horizontal padding stops Android clipping the last glyph of a short label ("Ask" -> "As").
   actionLabel: {
     ...typography.labelMd,
+    paddingHorizontal: spacing.xs,
+    textAlign: 'center',
     color: colors.onSurface,
   },
 

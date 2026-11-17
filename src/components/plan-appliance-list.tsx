@@ -20,12 +20,13 @@ export function PlanApplianceList({ rows }: { rows: PlanApplianceRow[] }) {
 
 function PlanApplianceRowView({ row, first }: { row: PlanApplianceRow; first: boolean }) {
   const { appliance, changed } = row;
+  const switchedOff = changed && row.toHoursPerDay === 0;
   const hours = changed
     ? `${formatHours(row.fromHoursPerDay)} → ${formatHours(row.toHoursPerDay)} a day`
     : `${formatHours(row.fromHoursPerDay)} a day`;
 
   return (
-    <View style={[styles.row, !first && styles.rowDivider, changed && styles.rowChanged]}>
+    <View style={[styles.row, !first && styles.rowDivider, changed && styles.rowChanged, switchedOff && styles.rowSwitchedOff]}>
       <View style={styles.lineOne}>
         <View style={styles.identity}>
           <Text style={styles.name} numberOfLines={1}>
@@ -71,6 +72,9 @@ const styles = StyleSheet.create({
   },
   rowChanged: {
     backgroundColor: `${colors.tertiaryContainer}1A`,
+  },
+  rowSwitchedOff: {
+    backgroundColor: `${colors.switchedOff}33`,
   },
   lineOne: {
     flexDirection: 'row',

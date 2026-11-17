@@ -4,7 +4,7 @@ import type { PlanChangeAction } from '@/types/chat';
 import type { Appliance, Plan } from '@/types/energy';
 
 /**
- * Every prompt, schema and prompt payload for the Gemini calls lives here. The model only ever
+ * Every prompt, schema and prompt payload for the model calls lives here. The model only ever
  * sees numbers the optimizer produced (or the user typed) and is told never to compute any.
  */
 
