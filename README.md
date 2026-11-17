@@ -1,56 +1,114 @@
-# Welcome to your Expo app 👋
+# Watt Plan
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A budget-first electricity planner for Filipino households. Instead of showing what you spent, Watt Plan starts from what you *want* to spend: set a target monthly bill, and the app works out which appliances to cut, and by how many hours a day, to get there.
 
-## Get started
+Android-only, built with Expo (React Native, TypeScript, Expo Router).
 
-1. Install dependencies
+## How it works
 
-   ```bash
-   npm install
-   ```
+1. **Add your appliances** (name, wattage, hours per day, days per week, category).
+2. **Enter your last bill** (kWh and billing period) in Bill settings. The app calibrates its appliance estimates to your real consumption.
+3. **Set a target bill** in pesos (₱).
+4. **Get a plan.** The optimizer cuts luxury appliances first (down to zero if needed), then flexible, then essential ones, never below an appliance's minimum hours per day. It shows the resulting bill, the savings, and whether the target is reachable.
+5. **Refine it by chatting.** In Plan chat, say things like "keep the aircon" or "change my target to ₱2,500". The AI turns your message into a structured action; the optimizer recomputes the plan.
 
-2. Start the app
+### Plan strategies
 
-   ```bash
-   npx expo start
-   ```
+- **Fewest changes**: reach the target by touching as few appliances as possible.
+- **Comfort first**: spread smaller cuts across appliances to protect the ones you value.
 
-In the output, you'll find options to open the app in a
+### Appliance categories
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+`essential`, `flexible`, `luxury`. Cuts happen in the order luxury, flexible, essential. Appliances you ask to "cut first" in chat go before all categories; ones you ask to "keep" are never cut.
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Screens
 
-## Get a fresh project
+| Area | Screens |
+| --- | --- |
+| Bottom tabs | Home, Appliances, Plan |
+| Pushed screens | Bill settings, Plan chat, Target edit |
+| Bottom sheets | Add appliance, Edit appliance |
 
-When you're ready, run:
+Layouts follow the mockups in `design/screens/`. Colors, type, and spacing live in one shared theme file (`src/constants/theme.ts`), documented in `design/DESIGN.md`.
+
+## Architecture
+
+The core rule: **the AI never computes numbers.** All money and kWh math is plain, deterministic TypeScript.
+
+| Path | Responsibility |
+| --- | --- |
+| `src/optimizer/` | Pure TypeScript, no AI, no network. Appliance kWh and cost, bill calibration, the Meralco bill formula, the plan optimizer, applying chat actions to plan inputs. |
+| `src/ai/` | Calls Gemini to (1) interpret a user message into a constrained JSON action and (2) explain a plan change in a sentence or two. Model output is validated in code before anything is applied. |
+| `src/store/` | One shared Zustand store, so Home, Plan, and Plan chat always show the same plan. Household data is persisted with AsyncStorage; plan and baseline are recomputed on launch. |
+| `src/config/meralco-rates.ts` | Every Meralco rate, charge, and tax value in one file. When new rates are published, update the numbers and `asOf` here and nothing else. |
+| `src/types/` | Shared domain types (`Appliance`, `BillSettings`, `Plan`, chat types). |
+| `src/app/` | Expo Router routes (file-based). |
+| `src/components/`, `src/utils/`, `src/hooks/` | UI components, formatting/search helpers, hooks. |
+| `design/` | Screen mockups (`screens/`), design tokens (`DESIGN.md`), reference HTML (`html/`), and the Meralco formula spec (`FORMULAMERALCO.txt`). |
+
+### Pricing
+
+- **Meralco mode** (default): the bill is computed with the Meralco residential formula (generation, transmission, system loss, tiered distribution, senior/lifeline lines, universal charges, FiT-All, GEA-All, and VAT). Rates are currently set to the November 2026 values.
+- **Custom mode**: for other utilities, a single effective ₱ per kWh (entered, or derived from last bill total / last bill kWh).
+
+Each appliance's kWh is scaled by one calibration factor (billed kWh ÷ summed appliance kWh when the bill settings were saved). Cutting hours lowers total kWh, and the saving is the bill before minus the bill after, split by each appliance's share of the cut.
+
+### AI layer
+
+Chat messages map to one of these actions: `keep`, `cut_first`, `set_target`, `set_min_hours`, `question`, `none`. The model returns JSON against a schema; `src/ai/interpret.ts` checks the action, appliance IDs, and number ranges before the optimizer applies it. If the model is unreachable (no key, no network, timeout), the chat shows an unavailable state and the plan itself is unaffected.
+
+Models are called through the Gemini Interactions API (`src/ai/gemini.ts`): `gemini-3.5-flash-lite` first (one retry), then `gemini-3.5-flash` as a fallback, each with an 8-second timeout.
+
+## Getting started
+
+### Prerequisites
+
+- Node.js and npm
+- An Android device or emulator (Expo Go works for quick tries; a [development build](https://docs.expo.dev/develop/development-builds/introduction/) is needed if you add native modules)
+- A free Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) (only needed for Plan chat)
+
+### Setup
 
 ```bash
-npm run reset-project
+npm install
+cp .env.example .env     # then set EXPO_PUBLIC_GEMINI_API_KEY in .env
+npx expo start
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+Press `a` in the terminal to open on an Android device or emulator, or scan the QR code with Expo Go.
 
-### Other setup steps
+> **Note:** `EXPO_PUBLIC_` variables are inlined into the app bundle, so the key is visible in a shipped build. Fine for development; use a backend proxy before publishing widely.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+Without a key the app still works: Home, Appliances, and Plan all run on the local optimizer. Only Plan chat shows its "unavailable" state.
 
-## Learn more
+### Scripts
 
-To learn more about developing your project with Expo, look at the following resources:
+| Command | What it does |
+| --- | --- |
+| `npm start` | Start the Expo dev server |
+| `npm run android` | Start and open on Android |
+| `npm run lint` | Lint (`expo lint`) |
+| `npm test` | Run the Jest test suite |
+| `npx tsc --noEmit` | Typecheck |
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Run lint and typecheck before committing.
 
-## Join the community
+## Testing
 
-Join our community of developers creating universal apps.
+Tests use Jest with `jest-expo` and live next to the code in `__tests__/` folders: the optimizer (plans, Meralco bill, calibration, appliance list), the AI layer (Gemini client, interpretation validation, explanations, with a mocked fetch in `src/ai/__mocks__/`), the store, utilities, and key components.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Tech stack
+
+Expo SDK 58 · React Native 0.88 · React 19 · TypeScript · Expo Router · Zustand · AsyncStorage · React Native Reanimated · React Native SVG · Jest · Google Gemini API
+
+## Contributing notes
+
+- Navigation uses Expo Router only; routes live in `src/app/`, non-route code stays outside it.
+- Add Expo-compatible packages with `npx expo install <package>`, not `npm install`.
+- Don't hand-edit `ios/` or `android/` if they appear; configure native behavior in `app.json`.
+- Keep money and kWh math in `src/optimizer/`. The AI layer must never produce numbers.
+- UI should match `design/screens/*.png`. Use the shared theme, and don't add elements the mockups don't show.
+
+## License
+
+See [LICENSE](LICENSE).
