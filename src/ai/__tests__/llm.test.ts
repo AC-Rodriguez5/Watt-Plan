@@ -3,6 +3,11 @@ import { extractText } from '../gemini';
 import { extractGroqText } from '../groq';
 import { AiUnavailableError, CHAIN, generate, REQUEST_TIMEOUT_MS } from '../llm';
 import { EXPLAIN_SYSTEM, INTERPRET_SCHEMA, INTERPRET_SYSTEM } from '../prompts';
+import { getNetworkStateAsync } from 'expo-network';
+import { generateWithGemma } from '../gemma';
+
+jest.mock('expo-network', () => ({ getNetworkStateAsync: jest.fn() }));
+jest.mock('../gemma', () => ({ generateWithGemma: jest.fn() }));
 
 const offline = new TypeError('Network request failed');
 const interpretRequest = { kind: 'interpret', systemInstruction: INTERPRET_SYSTEM, input: 'in', schema: INTERPRET_SCHEMA } as const;
@@ -17,17 +22,83 @@ let log: jest.SpyInstance;
 let warn: jest.SpyInstance;
 
 beforeEach(() => {
+  delete process.env.EXPO_PUBLIC_FORCE_LOCAL_AI;
+  (getNetworkStateAsync as jest.Mock).mockReset().mockResolvedValue({ isConnected: true, isInternetReachable: true });
+  (generateWithGemma as jest.Mock).mockReset();
   process.env.EXPO_PUBLIC_GROQ_API_KEY = 'groq-secret-key';
   process.env.EXPO_PUBLIC_GEMINI_API_KEY = 'gemini-secret-key';
   log = jest.spyOn(console, 'log').mockImplementation(() => {});
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 afterEach(() => {
+  delete process.env.EXPO_PUBLIC_FORCE_LOCAL_AI;
   jest.useRealTimers();
   jest.restoreAllMocks();
 });
 
 describe('the provider chain', () => {
+  it.each([interpretRequest, explainRequest])('forces Gemma for $kind while connected to Metro', async (request) => {
+    process.env.EXPO_PUBLIC_FORCE_LOCAL_AI = 'true';
+    (generateWithGemma as jest.Mock).mockResolvedValue('local test');
+    const { sent } = mockLlm({});
+    expect(await generate(request)).toBe('local test');
+    expect(sent).toHaveLength(0);
+    expect(getNetworkStateAsync).not.toHaveBeenCalled();
+  });
+
+  it('ignores the testing switch in production', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, '__DEV__');
+    Object.defineProperty(globalThis, '__DEV__', { value: false, configurable: true });
+    process.env.EXPO_PUBLIC_FORCE_LOCAL_AI = 'true';
+    try {
+      mockLlm({ explain: ['cloud'] });
+      expect(await generate(explainRequest)).toBe('cloud');
+      expect(generateWithGemma).not.toHaveBeenCalled();
+    } finally {
+      if (descriptor) Object.defineProperty(globalThis, '__DEV__', descriptor);
+    }
+  });
+  it.each([interpretRequest, explainRequest])('uses Gemma offline for $kind without contacting the cloud', async (request) => {
+    (getNetworkStateAsync as jest.Mock).mockResolvedValue({ isConnected: false });
+    (generateWithGemma as jest.Mock).mockResolvedValue('local answer');
+    const { sent } = mockLlm({});
+    expect(await generate(request)).toBe('local answer');
+    expect(sent).toHaveLength(0);
+    expect(generateWithGemma).toHaveBeenCalledWith(request);
+  });
+
+  it('uses Gemma when Wi-Fi has no internet, even without cloud keys', async () => {
+    delete process.env.EXPO_PUBLIC_GROQ_API_KEY;
+    delete process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+    (getNetworkStateAsync as jest.Mock).mockResolvedValue({ isConnected: true, isInternetReachable: false });
+    (generateWithGemma as jest.Mock).mockResolvedValue('offline');
+    expect(await generate(explainRequest)).toBe('offline');
+  });
+
+  it('switches to Gemma if connectivity is lost during a cloud call', async () => {
+    (getNetworkStateAsync as jest.Mock).mockResolvedValueOnce({ isConnected: true }).mockResolvedValue({ isConnected: false });
+    (generateWithGemma as jest.Mock).mockResolvedValue('local');
+    const { sent } = mockLlm({ interpret: [offline, offline] });
+    expect(await generate(interpretRequest)).toBe('local');
+    expect(models(sent)).toEqual([G120, G120]);
+  });
+
+  it('returns to cloud requests when connectivity returns', async () => {
+    (getNetworkStateAsync as jest.Mock).mockResolvedValueOnce({ isConnected: false }).mockResolvedValue({ isConnected: true });
+    (generateWithGemma as jest.Mock).mockResolvedValue('local');
+    const { sent } = mockLlm({ explain: ['online'] });
+    expect(await generate(explainRequest)).toBe('local');
+    expect(await generate(explainRequest)).toBe('online');
+    expect(sent).toHaveLength(1);
+  });
+
+  it('surfaces unavailable local inference without sending offline data to cloud', async () => {
+    (getNetworkStateAsync as jest.Mock).mockResolvedValue({ isConnected: false });
+    (generateWithGemma as jest.Mock).mockRejectedValue(new Error('missing native module'));
+    const { sent } = mockLlm({});
+    await expect(generate(explainRequest)).rejects.toBeInstanceOf(AiUnavailableError);
+    expect(sent).toHaveLength(0);
+  });
   it('is Groq gpt-oss-120b, Groq gpt-oss-20b, then Gemini flash-lite', () => {
     expect(CHAIN.map(({ provider, model }) => [provider, model])).toEqual([
       ['groq', G120],

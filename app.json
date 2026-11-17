@@ -24,6 +24,7 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "./plugins/withBundledGemma",
       "expo-router",
       [
         "expo-splash-screen",

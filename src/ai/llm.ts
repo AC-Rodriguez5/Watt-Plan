@@ -1,5 +1,6 @@
 /**
- * The one place the app asks a language model for text. A call walks a fixed provider chain:
+ * The one place the app asks a language model for text. Confirmed offline calls use bundled
+ * Gemma. Otherwise a call walks a fixed provider chain:
  *
  *   1. Groq openai/gpt-oss-120b
  *   2. Groq openai/gpt-oss-20b
@@ -15,6 +16,7 @@
 import { AiUnavailableError } from './http';
 import { callGemini, geminiApiKey } from './gemini';
 import { callGroq, groqApiKey } from './groq';
+import { getNetworkStateAsync } from 'expo-network';
 
 export { AiUnavailableError, REQUEST_TIMEOUT_MS } from './http';
 
@@ -66,6 +68,8 @@ async function tryEntry(entry: Entry, apiKey: string, request: GenerateRequest, 
 
 /** Sends a request down the chain and returns the answer text. Throws AiUnavailableError only when every entry fails. */
 export async function generate(request: GenerateRequest): Promise<string> {
+  if (__DEV__ && process.env.EXPO_PUBLIC_FORCE_LOCAL_AI === 'true') return generateOffline(request);
+  if (await isOffline()) return generateOffline(request);
   const keys = CHAIN.map((entry) => entry.apiKey());
   let failure: unknown;
   let tried = 0;
@@ -79,8 +83,35 @@ export async function generate(request: GenerateRequest): Promise<string> {
       return text;
     } catch (error) {
       failure = error;
+      // A connection can disappear during an online request. Recheck before trying another provider.
+      if (await isOffline()) return generateOffline(request);
     }
   }
   if (tried === 0) throw new AiUnavailableError('No AI key is set (EXPO_PUBLIC_GROQ_API_KEY or EXPO_PUBLIC_GEMINI_API_KEY)');
   throw failure;
+}
+
+async function isOffline(): Promise<boolean> {
+  try {
+    const network = await getNetworkStateAsync();
+    return network?.isConnected === false || network?.isInternetReachable === false;
+  } catch {
+    // An unavailable connectivity probe is not proof of an offline device.
+    return false;
+  }
+}
+
+async function generateOffline(request: GenerateRequest): Promise<string> {
+  try {
+    // Keep the native runtime unloaded during normal cloud calls and on Expo Go startup.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { generateWithGemma } = require('./gemma') as typeof import('./gemma');
+    const text = await generateWithGemma(request);
+    console.log(`[ai] ${request.kind} answered by on-device Gemma`);
+    return text;
+  } catch (cause) {
+    const reason = redact(cause instanceof Error ? cause.message : String(cause), [groqApiKey(), geminiApiKey()]);
+    console.warn('[ai] On-device Gemma failed.', { kind: request.kind, reason });
+    throw new AiUnavailableError('On-device Gemma could not complete the offline request', { cause });
+  }
 }

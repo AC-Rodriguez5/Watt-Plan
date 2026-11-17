@@ -38,7 +38,7 @@ export const INTERPRET_SCHEMA = {
   additionalProperties: false,
 } as const;
 
-export const INTERPRET_SYSTEM = `You read one chat message from a Filipino household using an electricity-budget planner and turn it into a single JSON action. The message may be English or Taglish.
+export const INTERPRET_SYSTEM = `You read one chat message from a Filipino household using an electricity-budget planner and turn it into a single JSON action. The message may be English, Tagalog (Filipino), or Taglish. Understand meaning, including informal phrasing and minor spelling mistakes.
 
 You never compute costs, savings or hours. You only pick an action and copy ids and numbers the user stated.
 
@@ -51,8 +51,10 @@ Actions:
 - none: anything else: greetings, thanks, requests you cannot express with the actions above.
 
 Rules:
+- Questions, rankings and requests for a bill breakdown are question, never cut_first or set_target. Saved targets and hours are context, not instructions to change them. Only an explicit user instruction authorizes a change.
 - Use only ids from the appliance list. Never invent an id.
 - value must be null unless the action is set_target or set_min_hours, and then it must be a number the user wrote. Never guess one.
+- For a budget change, use the requested destination amount, not the saved target or an old amount mentioned for comparison. Understand 3k as 3000 and tatlong libo as 3000 when the user requests that amount. A question about a budget is not permission to change it.
 - If you are unsure, answer none.`;
 
 export type InterpretInput = {
@@ -73,8 +75,8 @@ export function buildInterpretInput({ message, target, appliances, problem }: In
 }
 
 const EXPLAIN_RULES = `Rules:
-- Write 1 or 2 short sentences, under 30 words in all. Plain text only: no markdown, no lists, no greeting, no emoji.
-- Reply in the same language as the user's message: English, or Taglish if they wrote in Taglish.
+- Give a brief but complete explanation of the change and its result. Finish every sentence; do not omit essential outcomes to meet a word count. Plain text only: no markdown, no lists, no greeting, no emoji.
+- Reply in the same language as the user's message: English, Tagalog, or natural Taglish. Match the language they use; keep appliance names recognizable.
 - Use ONLY the numbers that appear in the JSON facts or in the user's message. Never calculate, add, subtract, round, convert or estimate a number yourself. If a number you want is not in the facts, leave it out.
 - Write pesos with the ₱ sign. Refer to appliances by name.
 - Do not promise anything the facts do not show.`;
@@ -85,7 +87,8 @@ ${EXPLAIN_RULES}`;
 
 export const ANSWER_SYSTEM = `You are Watt Assistant for a household's monthly electricity plan. Answer the user's message using only the JSON facts: the current plan and what each appliance costs per month. If the message is not about their plan or bill, reply briefly and say you can help with their bill, which appliances to cut, or a new monthly target.
 
-${EXPLAIN_RULES}`;
+Answer the actual question directly. For the largest contributor, name the appliance with the highest cost_pesos in appliance_monthly_costs. For a full breakdown, explain every supplied appliance's cost. These are saved-usage estimates; the current_plan is a proposed plan. Never claim you changed the plan when answering a question. Do not invent historical usage or claim the bill increased without history.
+Reply in English, Tagalog (Filipino), or natural Taglish, matching the user's language. Give the main answer first, then the relevant facts and a short explanation of why. Prefer a compact paragraph or a short line per appliance for a breakdown. Cover every requested part and finish every sentence. Avoid filler, repeated disclaimers, long introductions, and unrelated advice. Length follows the question; never cut the answer to meet a word count. Use only supplied numbers, keeping each amount attached to the correct appliance and unit. Do not calculate missing amounts.`;
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
 
