@@ -11,6 +11,8 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.acrodriguez5.wattplan",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -38,6 +40,16 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "37eb6f3c-062a-4ce3-b1d0-f06e3b3a3f75"
+      }
     }
   }
 }

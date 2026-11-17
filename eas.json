@@ -4,8 +4,7 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" },
-      "env": { "EXPO_PUBLIC_FORCE_LOCAL_AI": "false" }
+      "android": { "buildType": "apk" }
     },
     "preview": {
       "distribution": "internal",
