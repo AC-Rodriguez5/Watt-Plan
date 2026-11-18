@@ -9,7 +9,7 @@ import {
 } from '@/types/energy';
 
 import { CO2_KG_PER_KWH, monthlyKwh, type ApplianceUsage } from './appliance-cost';
-import { billForKwh, isPositive, pricingFor, ratePerKwhAt, seniorDiscountForKwh, type BillInputs, type Pricing } from './pricing';
+import { billForKwh, isPositive, pricingFor, ratePerKwhAt, seniorDiscountForKwh, undiscountedBillForKwh, type BillInputs, type Pricing } from './pricing';
 
 /** Cuts move in steps of this many hours a day, so the receipt shows tidy figures. */
 export const HOUR_STEP = 0.5;
@@ -229,7 +229,10 @@ export function optimize(
     status: feasible ? 'feasible' : 'not-reachable',
     target,
     currentEstimate,
+    currentKwh: baseline.kwh,
+    undiscountedEstimate: baseline.kwh > 0 ? undiscountedBillForKwh(baseline.kwh, baseline.pricing) : 0,
     projectedBill,
+    seniorDiscount: seniorDiscountForKwh(baseline.kwh - kwhSaved, baseline.pricing),
     floor,
     totalCuts,
     kwhSaved,

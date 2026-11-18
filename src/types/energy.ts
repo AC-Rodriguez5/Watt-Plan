@@ -75,8 +75,14 @@ export type Plan = {
   /** Monthly target the plan was computed for, in pesos. */
   target: number;
   currentEstimate: number;
+  /** kWh per month before any cuts: the consumption `currentEstimate` is priced on. */
+  currentKwh: number;
+  /** `currentEstimate` without the senior discount: the raw bill for `currentKwh`. Pesos per month. */
+  undiscountedEstimate: number;
   /** Bill after the cuts. When the target is not reachable this is the floor. */
   projectedBill: number;
+  /** Negative Meralco senior discount inside `projectedBill`, or null when it does not apply (not a senior, or over 100 kWh). */
+  seniorDiscount: number | null;
   /** Lowest realistic bill: every appliance at its minimum hours (luxury at zero). Pesos per month. */
   floor: number;
   totalCuts: number;

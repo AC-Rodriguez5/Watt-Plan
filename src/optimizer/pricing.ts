@@ -40,6 +40,11 @@ export function billForKwh(kwh: number, pricing: Pricing): number {
     : computeBill(kwh, MERALCO_RATES, { isRegisteredSenior: pricing.isRegisteredSenior }).total;
 }
 
+/** Pesos for a month of `kwh` with no senior discount applied: the raw bill the discount comes off. */
+export function undiscountedBillForKwh(kwh: number, pricing: Pricing): number {
+  return billForKwh(kwh, pricing.mode === 'meralco' ? { ...pricing, isRegisteredSenior: false } : pricing);
+}
+
 /** Negative senior discount in pesos, or null when the formula does not apply it to this estimate. */
 export function seniorDiscountForKwh(kwh: number, pricing: Pricing): number | null {
   if (!Number.isFinite(kwh) || kwh <= 0 || pricing.mode !== 'meralco' || !pricing.isRegisteredSenior) return null;
