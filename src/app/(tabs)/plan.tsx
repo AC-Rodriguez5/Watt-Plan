@@ -86,9 +86,11 @@ export default function PlanScreen() {
             <>
               <Receipt
                 status={plan.status}
-                currentEstimate={plan.currentEstimate}
+                currentEstimate={plan.undiscountedEstimate}
+                currentKwh={plan.currentKwh}
                 target={plan.target}
                 projectedBill={plan.projectedBill}
+                seniorDiscount={plan.seniorDiscount}
               />
               <PlanApplianceList rows={applianceRows} />
             </>

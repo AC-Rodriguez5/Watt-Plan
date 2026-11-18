@@ -86,6 +86,26 @@ describe('baseline', () => {
     expect(overLimit.seniorDiscount).toBeNull();
   });
 
+  it('carries the senior discount at the projected kWh into the plan', () => {
+    const seniorBill = { ...BILL, lastBillTotal: null, lastBillKwh: 100, isRegisteredSenior: true };
+    const factor = computeCalibrationFactor(SAMPLE_APPLIANCES, null, 100);
+    const kept = optimize(SAMPLE_APPLIANCES, seniorBill, factor, 1e6, 'fewest-changes')!;
+    expect(kept.seniorDiscount).toBeCloseTo(computeBill(100, undefined, { isRegisteredSenior: true }).senior, 8);
+    expect(kept.currentKwh).toBeCloseTo(100, 8);
+    expect(kept.currentEstimate).toBeCloseTo(computeBill(100, undefined, { isRegisteredSenior: true }).total, 8);
+    expect(kept.undiscountedEstimate).toBeCloseTo(computeBill(100).total, 8);
+    expect(kept.undiscountedEstimate).toBeGreaterThan(kept.currentEstimate);
+
+    // Over 100 kWh before the cuts; the plan's own projected kWh decides eligibility.
+    const over = { ...seniorBill, lastBillKwh: 150 };
+    const overFactor = computeCalibrationFactor(SAMPLE_APPLIANCES, null, 150);
+    const plan = optimize(SAMPLE_APPLIANCES, over, overFactor, 1, 'fewest-changes')!;
+    const projectedKwh = 150 - plan.kwhSaved;
+    const expected = computeBill(projectedKwh, undefined, { isRegisteredSenior: true }).senior;
+    expect(plan.seniorDiscount).toEqual(projectedKwh <= 100 ? expect.closeTo(expected, 8) : null);
+    expect(optimize(SAMPLE_APPLIANCES, { ...over, isRegisteredSenior: false }, overFactor, 1, 'fewest-changes')!.seniorDiscount).toBeNull();
+  });
+
   it('does not apply the Meralco senior line to custom-rate estimates', () => {
     const customSenior = { ...BILL, rateMode: 'custom' as const, customRatePerKwh: 11, isRegisteredSenior: true };
     const baseline = buildBaseline(SAMPLE_APPLIANCES, customSenior, factorFor(SAMPLE_APPLIANCES));

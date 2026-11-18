@@ -4,14 +4,19 @@ import Svg, { Line, Polygon } from 'react-native-svg';
 
 import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
 import type { PlanStatus } from '@/types/energy';
-import { formatPeso } from '@/utils/format';
+import { formatKwh, formatPeso, formatPesoExact } from '@/utils/format';
 
 export type ReceiptProps = {
   /** Drives the stamp under the header. */
   status: PlanStatus;
   projectedBill: number;
+  /** Raw bill for `currentKwh`, before any senior discount. */
   currentEstimate: number;
+  /** Predicted monthly kWh the current estimate is priced on. */
+  currentKwh: number;
   target: number;
+  /** Negative senior discount included in the projected bill; the line is shown only when it applies. */
+  seniorDiscount?: number | null;
 };
 
 const STAMP: Record<PlanStatus, { label: string; color: string }> = {
@@ -21,10 +26,11 @@ const STAMP: Record<PlanStatus, { label: string; color: string }> = {
 
 const TOOTH_WIDTH = 6;
 const TOOTH_DEPTH = 4;
-const LEADER = '. . . . . .';
+/** Long enough to fill any row; the leader is clipped to the space left between label and value. */
+const LEADER = '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .';
 
-/** Compact plan receipt: the estimate, the target, the projected bill and whether the target is met. */
-export function Receipt({ status, projectedBill, currentEstimate, target }: ReceiptProps) {
+/** Compact plan receipt: the target, the raw estimate, any senior discount, the projected bill and whether the target is met. */
+export function Receipt({ status, projectedBill, currentEstimate, currentKwh, target, seniorDiscount = null }: ReceiptProps) {
   const stamp = STAMP[status];
   return (
     <View style={styles.wrapper}>
@@ -36,8 +42,15 @@ export function Receipt({ status, projectedBill, currentEstimate, target }: Rece
         </View>
 
         <View style={styles.summary}>
-          <LeaderRow label="Current estimate" value={formatPeso(currentEstimate)} valueStyle={styles.summaryValue} />
           <LeaderRow label="Your target" value={formatPeso(target)} valueStyle={styles.targetValue} />
+          <LeaderRow
+            label={`Current estimate (${formatKwh(currentKwh)})`}
+            value={formatPeso(currentEstimate)}
+            valueStyle={styles.summaryValue}
+          />
+          {seniorDiscount !== null && seniorDiscount < 0 && (
+            <LeaderRow label="Senior Discount (5%)" value={formatPesoExact(seniorDiscount)} valueStyle={styles.discountValue} />
+          )}
         </View>
 
         <DashedRule />
@@ -68,8 +81,10 @@ export function LeaderRow({
   return (
     <View style={styles.leaderRow}>
       <Text style={[styles.leaderLabel, labelStyle]}>{label}</Text>
-      <Text style={[styles.leader, leaderStyle]}>{LEADER}</Text>
-      <Text style={[styles.summaryValue, valueStyle]}>{value}</Text>
+      <Text style={[styles.leader, leaderStyle]} numberOfLines={1} ellipsizeMode="clip">
+        {LEADER}
+      </Text>
+      <Text style={[styles.summaryValue, styles.leaderValue, valueStyle]}>{value}</Text>
     </View>
   );
 }
@@ -151,16 +166,22 @@ const styles = StyleSheet.create({
   },
   leaderRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'baseline',
   },
   leaderLabel: {
     ...typography.receiptLabel,
+    flexShrink: 1,
     color: colors.onSurfaceVariant,
   },
   leader: {
     ...typography.receiptLabel,
+    flex: 1,
+    minWidth: 0,
+    marginHorizontal: spacing.xs,
     color: colors.outline,
+  },
+  leaderValue: {
+    flexShrink: 0,
   },
   summaryValue: {
     ...typography.receiptLabel,
@@ -170,6 +191,10 @@ const styles = StyleSheet.create({
     ...typography.receiptLabel,
     fontFamily: typography.receiptNumericLg.fontFamily,
     color: colors.primary,
+  },
+  discountValue: {
+    ...typography.receiptLabel,
+    color: colors.tertiary,
   },
   rule: {
     height: 2,
