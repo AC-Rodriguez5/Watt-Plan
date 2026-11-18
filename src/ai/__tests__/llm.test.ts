@@ -22,7 +22,6 @@ let log: jest.SpyInstance;
 let warn: jest.SpyInstance;
 
 beforeEach(() => {
-  delete process.env.EXPO_PUBLIC_FORCE_LOCAL_AI;
   (getNetworkStateAsync as jest.Mock).mockReset().mockResolvedValue({ isConnected: true, isInternetReachable: true });
   (generateWithGemma as jest.Mock).mockReset();
   process.env.EXPO_PUBLIC_GROQ_API_KEY = 'groq-secret-key';
@@ -31,33 +30,19 @@ beforeEach(() => {
   warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 });
 afterEach(() => {
-  delete process.env.EXPO_PUBLIC_FORCE_LOCAL_AI;
   jest.useRealTimers();
   jest.restoreAllMocks();
 });
 
 describe('the provider chain', () => {
-  it.each([interpretRequest, explainRequest])('forces Gemma for $kind while connected to Metro', async (request) => {
-    process.env.EXPO_PUBLIC_FORCE_LOCAL_AI = 'true';
+  it.each([interpretRequest, explainRequest])('uses cloud providers while online for $kind', async (request) => {
     (generateWithGemma as jest.Mock).mockResolvedValue('local test');
-    const { sent } = mockLlm({});
-    expect(await generate(request)).toBe('local test');
-    expect(sent).toHaveLength(0);
-    expect(getNetworkStateAsync).not.toHaveBeenCalled();
+    const { sent } = mockLlm({ interpret: ['cloud response'], explain: ['cloud response'] });
+    expect(await generate(request)).toBe('cloud response');
+    expect(sent).toHaveLength(1);
+    expect(generateWithGemma).not.toHaveBeenCalled();
   });
 
-  it('ignores the testing switch in production', async () => {
-    const descriptor = Object.getOwnPropertyDescriptor(globalThis, '__DEV__');
-    Object.defineProperty(globalThis, '__DEV__', { value: false, configurable: true });
-    process.env.EXPO_PUBLIC_FORCE_LOCAL_AI = 'true';
-    try {
-      mockLlm({ explain: ['cloud'] });
-      expect(await generate(explainRequest)).toBe('cloud');
-      expect(generateWithGemma).not.toHaveBeenCalled();
-    } finally {
-      if (descriptor) Object.defineProperty(globalThis, '__DEV__', descriptor);
-    }
-  });
   it.each([interpretRequest, explainRequest])('uses Gemma offline for $kind without contacting the cloud', async (request) => {
     (getNetworkStateAsync as jest.Mock).mockResolvedValue({ isConnected: false });
     (generateWithGemma as jest.Mock).mockResolvedValue('local answer');
@@ -161,16 +146,27 @@ describe('moving down the chain', () => {
 
   it('throws only when every model fails, with the last failure', async () => {
     const { sent } = mockLlm({ explain: [new HttpStatus(500)] });
-    await expect(generate(explainRequest)).rejects.toThrow(new RegExp(`${GEM} responded with HTTP 500`));
+    (generateWithGemma as jest.Mock).mockRejectedValue(new Error('native runtime unavailable'));
+    await expect(generate(explainRequest)).rejects.toThrow('On-device Gemma could not complete the offline request');
     expect(models(sent)).toEqual([G120, G120, G20, G20, GEM, GEM]);
+    expect(generateWithGemma).toHaveBeenCalledWith(explainRequest);
   });
 
   it('throws on timeouts all the way down', async () => {
     jest.useFakeTimers();
     mockLlm({ explain: ['hang'] });
-    const assertion = expect(generate(explainRequest)).rejects.toThrow(/timed out/);
+    (generateWithGemma as jest.Mock).mockRejectedValue(new Error('native runtime unavailable'));
+    const assertion = expect(generate(explainRequest)).rejects.toThrow('On-device Gemma could not complete the offline request');
     await jest.advanceTimersByTimeAsync(REQUEST_TIMEOUT_MS * 6);
     await assertion;
+  });
+
+  it('uses Gemma when every cloud provider fails while internet is available', async () => {
+    const { sent } = mockLlm({ explain: [new HttpStatus(401)] });
+    (generateWithGemma as jest.Mock).mockResolvedValue('local answer');
+    expect(await generate(explainRequest)).toBe('local answer');
+    expect(models(sent)).toEqual([G120, G20, GEM]);
+    expect(generateWithGemma).toHaveBeenCalledWith(explainRequest);
   });
 
   it('treats an empty answer as a failure and moves on without a retry', async () => {
@@ -191,16 +187,19 @@ describe('API keys', () => {
   it('skips Gemini when there is no Gemini key', async () => {
     delete process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     const { sent } = mockLlm({ explain: [new HttpStatus(429)] });
-    await expect(generate(explainRequest)).rejects.toBeInstanceOf(AiUnavailableError);
+    (generateWithGemma as jest.Mock).mockResolvedValue('local answer');
+    await expect(generate(explainRequest)).resolves.toBe('local answer');
     expect(models(sent)).toEqual([G120, G20]);
   });
 
-  it('does not try anything when there is no key at all', async () => {
+  it('uses Gemma without contacting cloud providers when no key is configured', async () => {
     delete process.env.EXPO_PUBLIC_GROQ_API_KEY;
     delete process.env.EXPO_PUBLIC_GEMINI_API_KEY;
     const { fetchMock } = mockLlm({});
-    await expect(generate(explainRequest)).rejects.toBeInstanceOf(AiUnavailableError);
+    (generateWithGemma as jest.Mock).mockResolvedValue('local answer');
+    await expect(generate(explainRequest)).resolves.toBe('local answer');
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(generateWithGemma).toHaveBeenCalledWith(explainRequest);
   });
 });
 
@@ -269,7 +268,8 @@ describe('logging', () => {
   it('never logs an API key, even when an error response echoes it back', async () => {
     const echoing = jest.fn(async () => ({ ok: false, status: 401, text: async () => 'bad key groq-secret-key / gemini-secret-key', json: async () => ({}) }));
     globalThis.fetch = echoing as unknown as typeof fetch;
-    await expect(generate(explainRequest)).rejects.toBeInstanceOf(AiUnavailableError);
+    (generateWithGemma as jest.Mock).mockResolvedValue('local answer');
+    await expect(generate(explainRequest)).resolves.toBe('local answer');
 
     const output = JSON.stringify([...log.mock.calls, ...warn.mock.calls]);
     expect(warn).toHaveBeenCalled();

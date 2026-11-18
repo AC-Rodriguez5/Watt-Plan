@@ -6,8 +6,9 @@
  *   2. Groq openai/gpt-oss-20b
  *   3. Gemini gemini-3.5-flash-lite
  *
- * and, when all three fail, throws AiUnavailableError so the caller uses its template (explain) or
- * its offline reply (interpret). Per entry:
+ * and falls back to on-device Gemma when no cloud key is configured or every cloud entry fails.
+ * If Gemma also fails, AiUnavailableError lets the caller use its template (explain) or offline
+ * reply (interpret). Per entry:
  *   - 429 (rate limited), or any other 4xx, or an empty answer: next entry at once, no retry.
  *   - 5xx, timeout or network failure: one retry on the same entry, then the next entry.
  * An entry whose API key is not set is skipped.
@@ -66,12 +67,10 @@ async function tryEntry(entry: Entry, apiKey: string, request: GenerateRequest, 
   throw failure;
 }
 
-/** Sends a request down the chain and returns the answer text. Throws AiUnavailableError only when every entry fails. */
+/** Tries the cloud chain and falls back to Gemma when offline or when every cloud entry fails. */
 export async function generate(request: GenerateRequest): Promise<string> {
-  if (__DEV__ && process.env.EXPO_PUBLIC_FORCE_LOCAL_AI === 'true') return generateOffline(request);
   if (await isOffline()) return generateOffline(request);
   const keys = CHAIN.map((entry) => entry.apiKey());
-  let failure: unknown;
   let tried = 0;
   for (const entry of CHAIN) {
     const apiKey = entry.apiKey();
@@ -81,14 +80,14 @@ export async function generate(request: GenerateRequest): Promise<string> {
       const text = await tryEntry(entry, apiKey, request, keys);
       console.log(`[ai] ${request.kind} answered by ${entry.provider} ${entry.model}`);
       return text;
-    } catch (error) {
-      failure = error;
+    } catch {
       // A connection can disappear during an online request. Recheck before trying another provider.
       if (await isOffline()) return generateOffline(request);
     }
   }
-  if (tried === 0) throw new AiUnavailableError('No AI key is set (EXPO_PUBLIC_GROQ_API_KEY or EXPO_PUBLIC_GEMINI_API_KEY)');
-  throw failure;
+  if (tried === 0) console.warn('[ai] No cloud API key is configured; trying on-device Gemma.');
+  else console.warn('[ai] Cloud providers are unavailable; trying on-device Gemma.');
+  return generateOffline(request);
 }
 
 async function isOffline(): Promise<boolean> {
@@ -107,6 +106,7 @@ async function generateOffline(request: GenerateRequest): Promise<string> {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { generateWithGemma } = require('./gemma') as typeof import('./gemma');
     const text = await generateWithGemma(request);
+    if (typeof text !== 'string' || !text.trim()) throw new Error('On-device Gemma returned no answer');
     console.log(`[ai] ${request.kind} answered by on-device Gemma`);
     return text;
   } catch (cause) {

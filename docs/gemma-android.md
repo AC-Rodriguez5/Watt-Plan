@@ -22,7 +22,7 @@ npx eas-cli@latest build --platform android --profile development
 npx expo start --dev-client -c
 ```
 
-Install the resulting development APK on an Android device before opening the Metro link. The shared provider checks connectivity for every call: confirmed offline goes directly to Gemma; online uses Groq 120B, Groq 20B, then Gemini. Unknown connectivity tries the cloud. Connectivity is checked again after a cloud provider fails. For development testing while Metro remains connected, set EXPO_PUBLIC_FORCE_LOCAL_AI=true in .env.local and restart Metro. This override is ignored in production; set it to false to restore automatic routing. To test offline, load the development bundle before disconnecting the internet, or use the standalone preview APK.
+Install the resulting development APK on an Android device before opening the Metro link. The shared provider checks connectivity for every call: confirmed offline goes directly to Gemma; online uses Groq 120B, Groq 20B, then Gemini. Unknown connectivity tries the cloud. Connectivity is checked again after a cloud provider fails. If no cloud key is configured or all cloud providers fail, the app tries on-device Gemma. To test offline, load the development bundle before disconnecting the internet, or use the standalone preview APK.
 
 For a standalone APK with its JavaScript bundle:
 
@@ -30,7 +30,7 @@ For a standalone APK with its JavaScript bundle:
 npx eas-cli@latest build --platform android --profile preview
 ```
 
-The preview APK needs no Metro connection. Supply the Groq/Gemini API keys through the EAS environment for online testing; `.env` and `.env.local` are excluded from uploads.
+The preview APK needs no Metro connection. For cloud requests, add `EXPO_PUBLIC_GROQ_API_KEY` and/or `EXPO_PUBLIC_GEMINI_API_KEY` to the EAS `preview` environment before building; local `.env` and `.env.local` files are excluded from uploads. Without those EAS variables, the APK uses Gemma instead.
 
 ## Device acceptance record
 
