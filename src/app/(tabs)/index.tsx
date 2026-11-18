@@ -29,6 +29,8 @@ export default function HomeScreen() {
               target={target}
               dailyKwh={averageDailyKwh(appliances)}
               hasAppliances={appliances.length > 0}
+              estimatedBill={baseline.cost}
+              predictedKwh={baseline.kwh}
             />
           )}
         </View>

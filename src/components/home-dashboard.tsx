@@ -10,7 +10,7 @@ import type { CostlyAppliance, HomeSummary } from '@/optimizer/home-summary';
 import type { BillSettings } from '@/types/energy';
 import { applianceIcon } from '@/utils/appliance-icon';
 import { billingDay, formatPeriod } from '@/utils/billing-period';
-import { formatPeso, splitPeso } from '@/utils/format';
+import { formatKwh, formatPeso, splitPeso } from '@/utils/format';
 
 type HomeDashboardProps = {
   summary: HomeSummary;
@@ -59,11 +59,17 @@ function BillCard({ summary, bill }: HomeDashboardProps) {
         </View>
       )}
 
-      <View>
-        <Text style={styles.billLabel}>Estimated bill</Text>
-        <View style={styles.amountRow}>
-          <Text style={styles.amount}>{amount.whole}</Text>
-          <Text style={styles.cents}>.{amount.cents}</Text>
+      <View style={styles.estimateRow}>
+        <View style={styles.billEstimate}>
+          <Text style={styles.billLabel}>Estimated bill</Text>
+          <View style={styles.amountRow}>
+            <Text style={styles.amount}>{amount.whole}</Text>
+            <Text style={styles.cents}>.{amount.cents}</Text>
+          </View>
+        </View>
+        <View style={styles.predictedBlock}>
+          <Text style={styles.predictedLabel}>Predicted:</Text>
+          <Text style={styles.predictedKwh}>{formatKwh(summary.kwh)}</Text>
         </View>
       </View>
 
@@ -280,6 +286,29 @@ const styles = StyleSheet.create({
   billLabel: {
     ...typography.bodyMd,
     color: colors.onSurfaceVariant,
+  },
+  estimateRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: spacing.sm,
+    rowGap: spacing.xs,
+  },
+  billEstimate: {
+    flexShrink: 1,
+  },
+  predictedBlock: {
+    flexShrink: 0,
+    alignItems: 'flex-end',
+  },
+  predictedLabel: {
+    ...typography.labelSm,
+    color: colors.onSurfaceVariant,
+  },
+  predictedKwh: {
+    ...typography.labelSm,
+    color: colors.onSurface,
   },
   amountRow: {
     flexDirection: 'row',

@@ -26,6 +26,7 @@ const SAVED: PersistedState = {
     lastBillKwh: 150,
     rateMode: 'meralco',
     customRatePerKwh: null,
+    isRegisteredSenior: false,
     generationCharge: null,
     distributionCharge: null,
     taxesCharge: null,
@@ -43,7 +44,7 @@ const KETTLE_FACTOR = 150 / ((1500 * 1 * 7 * 4.33) / 1000);
 const { calibrationFactor: _stored, ...LEGACY } = SAVED;
 
 /** Bill settings as they were saved before the Meralco formula: no `rateMode`, no `customRatePerKwh`. */
-const { rateMode: _mode, customRatePerKwh: _custom, ...PRE_FORMULA_BILL } = SAVED.billSettings;
+const { rateMode: _mode, customRatePerKwh: _custom, isRegisteredSenior: _senior, ...PRE_FORMULA_BILL } = SAVED.billSettings;
 
 const envelope = (state: unknown) => JSON.stringify({ version: 1, state });
 
@@ -85,6 +86,13 @@ describe('parsePersistedState', () => {
     expect(parsed).toEqual(SAVED);
     expect(parsed?.billSettings.rateMode).toBe('meralco');
     expect(parsed?.billSettings.customRatePerKwh).toBeNull();
+    expect(parsed?.billSettings.isRegisteredSenior).toBe(false);
+  });
+
+  it('round-trips an enabled senior discount setting', () => {
+    const { persistence } = load();
+    const senior = { ...SAVED, billSettings: { ...SAVED.billSettings, isRegisteredSenior: true } };
+    expect(persistence.parsePersistedState(persistence.serializePersistedState(senior))).toEqual(senior);
   });
 
   it('loads data saved before both the factor and the rate fields existed', () => {
@@ -125,6 +133,7 @@ describe('parsePersistedState', () => {
     ['an appliance missing its name', envelope({ ...SAVED, appliances: [{ ...SAVED.appliances[0], name: undefined }] })],
     ['a rate mode that does not exist', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, rateMode: 'solar' } })],
     ['a custom rate that is text', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, customRatePerKwh: '11' } })],
+    ['senior discount flag that is not a boolean', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, isRegisteredSenior: 'yes' } })],
     ['bill settings with a text amount', envelope({ ...SAVED, billSettings: { ...SAVED.billSettings, lastBillTotal: '1800' } })],
     ['no bill settings', envelope({ ...SAVED, billSettings: null })],
     ['a target that is not a number', envelope({ ...SAVED, target: 'high' })],
@@ -267,11 +276,13 @@ describe('saving changes', () => {
 
     useAppStore.getState().updateAppliance('aircon', { hoursPerDay: 3 });
     useAppStore.getState().updateBillSettings({ lastBillTotal: 4100 });
+    useAppStore.getState().setSeniorCitizenDiscount(true);
     await jest.advanceTimersByTimeAsync(persistence.SAVE_DEBOUNCE_MS);
 
     const saved = persistence.parsePersistedState(await storage.getItem(persistence.STORAGE_KEY));
     expect(saved?.appliances.find(({ id }) => id === 'aircon')?.hoursPerDay).toBe(3);
     expect(saved?.billSettings.lastBillTotal).toBe(4100);
+    expect(saved?.billSettings.isRegisteredSenior).toBe(true);
   });
 
   it('saves the factor when bill settings are saved again', async () => {

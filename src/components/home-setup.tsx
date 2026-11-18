@@ -6,7 +6,7 @@ import Svg, { Defs, LinearGradient, Polygon, Rect, Stop } from 'react-native-svg
 
 import { Icon } from '@/components/icon';
 import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
-import { formatPeso } from '@/utils/format';
+import { formatKwh, formatPeso } from '@/utils/format';
 
 const HERO_PHOTO = require('../../assets/images/home-hero.jpg');
 
@@ -24,10 +24,12 @@ type HomeSetupProps = {
   /** Average kWh per day across the appliances added so far. */
   dailyKwh: number;
   hasAppliances: boolean;
+  estimatedBill: number;
+  predictedKwh: number;
 };
 
 /** Home tab before appliances or a last bill exist (design/screens/home_no_setup.png). */
-export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
+export function HomeSetup({ target, dailyKwh, hasAppliances, estimatedBill, predictedKwh }: HomeSetupProps) {
   const openPlan = () => router.navigate('/plan');
 
   return (
@@ -114,6 +116,8 @@ export function HomeSetup({ target, dailyKwh, hasAppliances }: HomeSetupProps) {
         <View style={styles.ledger}>
           <LedgerRow label="Target" value={target === null ? '—' : formatPeso(target)} valueStyle={styles.ledgerBold} />
           <LedgerRow label="Daily use" value={`${dailyKwh.toFixed(2)} kWh`} />
+          <LedgerRow label="Estimated bill" value={formatPeso(estimatedBill)} valueStyle={styles.ledgerBold} />
+          <LedgerRow label="Predicted" value={formatKwh(predictedKwh)} />
         </View>
         <View style={styles.tornEdge}>
           <Svg width="100%" height={12} viewBox="0 0 320 12" preserveAspectRatio="none">

@@ -51,6 +51,8 @@ type AppActions = {
   removeAppliance: (id: string) => void;
   /** Saves bill settings and recalibrates: the factor is recomputed from the current appliances. */
   updateBillSettings: (changes: Partial<BillSettings>) => void;
+  /** Updates senior discount eligibility without recalibrating appliance usage. */
+  setSeniorCitizenDiscount: (enabled: boolean) => void;
   setTarget: (target: number | null) => void;
   setPlanMode: (mode: PlanMode) => void;
   setPlan: (plan: Plan | null) => void;
@@ -123,6 +125,10 @@ export const useAppStore = create<AppState & AppActions>()((set, get) => ({
         calibrationFactor: computeCalibrationFactor(state.appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),
       };
     }),
+  setSeniorCitizenDiscount: (isRegisteredSenior) =>
+    set((state) => ({
+      billSettings: { ...state.billSettings, isRegisteredSenior },
+    })),
   setTarget: (target) => set({ target }),
   setPlanMode: (planMode) => set({ planMode }),
   setPlan: (plan) => set({ plan }),

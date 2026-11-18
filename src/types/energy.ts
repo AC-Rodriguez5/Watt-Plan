@@ -31,6 +31,8 @@ export type BillSettings = {
   rateMode: RateMode;
   /** Effective ₱ per kWh for the custom mode. Null: use last bill total / last bill kWh when both are known. */
   customRatePerKwh: number | null;
+  /** Applies the formula's senior citizen discount when monthly consumption is within the eligibility limit. */
+  isRegisteredSenior: boolean;
   /** Billing period as ISO dates (YYYY-MM-DD). */
   periodStart: string;
   periodEnd: string;

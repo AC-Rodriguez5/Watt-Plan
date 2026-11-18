@@ -69,6 +69,28 @@ describe('baseline', () => {
     const baseline = buildBaseline([], BILL, 1);
     expect(baseline.cost).toBe(0);
     expect(baseline.kwh).toBe(0);
+    expect(baseline.seniorDiscount).toBeNull();
+  });
+
+  it('applies the senior discount through the Meralco formula at exactly 100 kWh only', () => {
+    const seniorBill = { ...BILL, lastBillTotal: null, lastBillKwh: 100, isRegisteredSenior: true };
+    const factor = computeCalibrationFactor(SAMPLE_APPLIANCES, null, 100);
+    const eligible = buildBaseline(SAMPLE_APPLIANCES, seniorBill, factor);
+    const overLimit = buildBaseline(SAMPLE_APPLIANCES, { ...seniorBill, lastBillKwh: 101 }, factor * 1.01);
+    const expected = computeBill(100, undefined, { isRegisteredSenior: true });
+
+    expect(eligible.kwh).toBeCloseTo(100, 8);
+    expect(eligible.cost).toBeCloseTo(expected.total, 8);
+    expect(eligible.seniorDiscount).toBeCloseTo(expected.senior, 8);
+    expect(overLimit.kwh).toBeCloseTo(101, 8);
+    expect(overLimit.seniorDiscount).toBeNull();
+  });
+
+  it('does not apply the Meralco senior line to custom-rate estimates', () => {
+    const customSenior = { ...BILL, rateMode: 'custom' as const, customRatePerKwh: 11, isRegisteredSenior: true };
+    const baseline = buildBaseline(SAMPLE_APPLIANCES, customSenior, factorFor(SAMPLE_APPLIANCES));
+    expect(baseline.cost).toBeCloseTo(283 * 11, 6);
+    expect(baseline.seniorDiscount).toBeNull();
   });
 });
 
