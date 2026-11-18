@@ -19,10 +19,11 @@ type BillBreakdownProps = {
   values: BillFormValues;
   errors: BillFormErrors;
   onChange: (field: ChargeField, text: string) => void;
+  seniorDiscount?: number | null;
 };
 
 /** Optional itemized bill. Collapsed until the user opens it. */
-export function BillBreakdown({ values, errors, onChange }: BillBreakdownProps) {
+export function BillBreakdown({ values, errors, onChange, seniorDiscount = null }: BillBreakdownProps) {
   const [expanded, setExpanded] = useState(false);
 
   const total = amountOrNull(values.total);
@@ -62,6 +63,13 @@ export function BillBreakdown({ values, errors, onChange }: BillBreakdownProps) 
               onChangeText={(text) => onChange(field, text)}
             />
           ))}
+
+          {seniorDiscount !== null && seniorDiscount < 0 && (
+            <View style={styles.seniorDiscount}>
+              <Text style={styles.seniorDiscountLabel}>Senior Discount (5%)</Text>
+              <Text style={styles.seniorDiscountValue}>{formatPesoExact(seniorDiscount)}</Text>
+            </View>
+          )}
 
           <View style={styles.verify}>
             <Text style={styles.verifyLabel}>Charges add up to:</Text>
@@ -219,6 +227,21 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: spacing.xs,
     color: colors.error,
+  },
+  seniorDiscount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.xs,
+  },
+  seniorDiscountLabel: {
+    ...typography.labelMd,
+    color: colors.onSurfaceVariant,
+  },
+  seniorDiscountValue: {
+    ...typography.receiptNumericMd,
+    color: colors.tertiary,
   },
   verify: {
     flexDirection: 'row',

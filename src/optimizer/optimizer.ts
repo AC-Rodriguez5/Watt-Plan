@@ -9,7 +9,7 @@ import {
 } from '@/types/energy';
 
 import { CO2_KG_PER_KWH, monthlyKwh, type ApplianceUsage } from './appliance-cost';
-import { billForKwh, isPositive, pricingFor, ratePerKwhAt, type BillInputs, type Pricing } from './pricing';
+import { billForKwh, isPositive, pricingFor, ratePerKwhAt, seniorDiscountForKwh, type BillInputs, type Pricing } from './pricing';
 
 /** Cuts move in steps of this many hours a day, so the receipt shows tidy figures. */
 export const HOUR_STEP = 0.5;
@@ -52,6 +52,8 @@ export type Baseline = {
   kwh: number;
   /** Pesos per month for `kwh`. 0 when there is no kWh to bill. */
   cost: number;
+  /** Negative Meralco senior discount applied to this estimate, or null when ineligible. */
+  seniorDiscount: number | null;
   items: ApplianceBaseline[];
 };
 
@@ -89,6 +91,7 @@ export function buildBaseline(appliances: Appliance[], bill: BillInputs, storedF
     isCalibrated,
     kwh,
     cost,
+    seniorDiscount: seniorDiscountForKwh(kwh, pricing),
     items,
   };
 }

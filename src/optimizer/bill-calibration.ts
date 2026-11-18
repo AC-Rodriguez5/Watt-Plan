@@ -32,7 +32,7 @@ export type Calibration = {
   match: MatchQuality | null;
 };
 
-type RateFields = Pick<BillSettings, 'rateMode' | 'customRatePerKwh'>;
+type RateFields = Pick<BillSettings, 'rateMode' | 'customRatePerKwh' | 'isRegisteredSenior'>;
 
 /**
  * Reconciles the appliance list with the last bill. `lastBillKwh` is what calibrates; `lastBillTotal`

@@ -30,7 +30,9 @@ export default function BillSettingsScreen() {
 
   const appliances = useAppStore((state) => state.appliances);
   const billSettings = useAppStore((state) => state.billSettings);
+  const baseline = useAppStore((state) => state.baseline);
   const updateBillSettings = useAppStore((state) => state.updateBillSettings);
+  const setSeniorCitizenDiscount = useAppStore((state) => state.setSeniorCitizenDiscount);
   const resetAll = useAppStore((state) => state.resetAll);
 
   const [values, setValues] = useState<BillFormValues>(() => billFormFromSettings(billSettings));
@@ -149,12 +151,29 @@ export default function BillSettingsScreen() {
             error={errors.kwh}
           />
 
+          <Pressable
+            accessibilityRole="switch"
+            accessibilityLabel="Senior Citizen Discount"
+            accessibilityHint="5% discount applies only if total consumption is 100 kWh or below."
+            accessibilityState={{ checked: billSettings.isRegisteredSenior }}
+            onPress={() => setSeniorCitizenDiscount(!billSettings.isRegisteredSenior)}
+            style={({ pressed }) => [styles.seniorToggle, pressed && styles.seniorTogglePressed]}>
+            <View style={styles.seniorCopy}>
+              <Text style={styles.seniorLabel}>Senior Citizen Discount</Text>
+              <Text style={styles.seniorHelper}>5% discount applies only if total consumption is 100 kWh or below.</Text>
+            </View>
+            <View style={[styles.switchTrack, billSettings.isRegisteredSenior && styles.switchTrackOn]}>
+              <View style={[styles.switchThumb, billSettings.isRegisteredSenior && styles.switchThumbOn]} />
+            </View>
+          </Pressable>
+
           <BillCalibrationCard calibration={calibration} />
 
           <BillBreakdown
             values={values}
             errors={errors}
             onChange={(field, text) => setField(field, text)}
+            seniorDiscount={baseline.seniorDiscount}
           />
 
           <View style={styles.actions}>
@@ -257,6 +276,55 @@ const styles = StyleSheet.create({
   unitText: {
     ...typography.receiptLabel,
     color: colors.onSurfaceVariant,
+  },
+  seniorToggle: {
+    minHeight: 72,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surfaceContainerLowest,
+    boxShadow: shadows.level1,
+  },
+  seniorTogglePressed: {
+    backgroundColor: colors.surfaceContainerLow,
+  },
+  seniorCopy: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
+  },
+  seniorLabel: {
+    ...typography.titleMd,
+    color: colors.onSurface,
+  },
+  seniorHelper: {
+    ...typography.labelSm,
+    color: colors.onSurfaceVariant,
+  },
+  switchTrack: {
+    width: 52,
+    height: 32,
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceContainerHigh,
+  },
+  switchTrackOn: {
+    backgroundColor: colors.primary,
+  },
+  switchThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: radii.full,
+    backgroundColor: colors.surfaceContainerLowest,
+    boxShadow: shadows.level1,
+  },
+  switchThumbOn: {
+    transform: [{ translateX: 20 }],
   },
 
   actions: {

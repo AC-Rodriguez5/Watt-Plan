@@ -14,8 +14,8 @@ import type { Appliance, ApplianceCategory, BillSettings, PlanMode, RateMode } f
  * existed gets one computed from the saved appliances and bill when it is loaded (see
  * parsePersistedState). A bump would have thrown those households away.
  *
- * The same goes for the bill settings' `rateMode` and `customRatePerKwh` (the Meralco formula): saves
- * without them load as Meralco mode with no custom rate.
+ * The same goes for bill settings added after the original format: rateMode, customRatePerKwh, and
+ * isRegisteredSenior all have defaults when older saves are loaded.
  */
 export const STORAGE_VERSION = 1;
 export const STORAGE_KEY = `watt-plan:household:v${STORAGE_VERSION}`;
@@ -65,10 +65,12 @@ function isAppliance(value: unknown): value is Appliance {
   );
 }
 
-/** What is stored for bill settings: `rateMode` and `customRatePerKwh` did not exist in older saves. */
-type StoredBillSettings = Omit<BillSettings, 'rateMode' | 'customRatePerKwh'> & Partial<Pick<BillSettings, 'rateMode' | 'customRatePerKwh'>>;
+/** What is stored for bill settings; newly added settings remain optional when reading older saves. */
+type StoredBillSettings = Omit<BillSettings, 'rateMode' | 'customRatePerKwh' | 'isRegisteredSenior'> &
+  Partial<Pick<BillSettings, 'rateMode' | 'customRatePerKwh' | 'isRegisteredSenior'>>;
 
 const isRateMode = (value: unknown): value is RateMode => RATE_MODES.includes(value as RateMode);
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 function isBillSettings(value: unknown): value is StoredBillSettings {
   return (
@@ -76,6 +78,7 @@ function isBillSettings(value: unknown): value is StoredBillSettings {
     isString(value.utility) &&
     isOptional(value.rateMode, isRateMode) &&
     isOptional(value.customRatePerKwh, isAmountOrNull) &&
+    isOptional(value.isRegisteredSenior, isBoolean) &&
     isString(value.periodStart) &&
     isString(value.periodEnd) &&
     isAmountOrNull(value.lastBillTotal) &&
@@ -114,7 +117,12 @@ export function parsePersistedState(raw: string | null): PersistedState | null {
   }
   return {
     appliances,
-    billSettings: { ...billSettings, rateMode: billSettings.rateMode ?? 'meralco', customRatePerKwh: billSettings.customRatePerKwh ?? null },
+    billSettings: {
+      ...billSettings,
+      rateMode: billSettings.rateMode ?? 'meralco',
+      customRatePerKwh: billSettings.customRatePerKwh ?? null,
+      isRegisteredSenior: billSettings.isRegisteredSenior ?? false,
+    },
     // Saved before the factor was stored: compute it once now, from the saved household.
     calibrationFactor:
       (calibrationFactor as number | undefined) ?? computeCalibrationFactor(appliances, billSettings.lastBillTotal, billSettings.lastBillKwh),

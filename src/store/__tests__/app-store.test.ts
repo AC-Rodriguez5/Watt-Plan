@@ -55,6 +55,22 @@ describe('shared plan', () => {
     expect(plan?.currentEstimate).toBeCloseTo(computeBill(200).total, 6);
   });
 
+  it('updates the senior discount immediately without changing calibrated kWh', () => {
+    useAppStore.getState().updateBillSettings({ lastBillTotal: null, lastBillKwh: 100 });
+    const factor = useAppStore.getState().calibrationFactor;
+    const before = useAppStore.getState().baseline.cost;
+
+    useAppStore.getState().setSeniorCitizenDiscount(true);
+
+    const { baseline, billSettings } = useAppStore.getState();
+    expect(billSettings.isRegisteredSenior).toBe(true);
+    expect(useAppStore.getState().calibrationFactor).toBe(factor);
+    expect(baseline.kwh).toBeCloseTo(100, 8);
+    expect(baseline.cost).toBeLessThan(before);
+    expect(baseline.seniorDiscount).toBeLessThan(0);
+    expect(baseline.cost).toBeCloseTo(computeBill(100, undefined, { isRegisteredSenior: true }).total, 8);
+  });
+
   it('recomputes when the strategy changes', () => {
     useAppStore.getState().setPlanMode('comfort-first');
     expect(useAppStore.getState().plan?.mode).toBe('comfort-first');

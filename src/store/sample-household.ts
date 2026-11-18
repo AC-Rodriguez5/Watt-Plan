@@ -41,6 +41,7 @@ export const SAMPLE_BILL_SETTINGS: BillSettings = {
   utility: 'Meralco Residential',
   rateMode: 'meralco',
   customRatePerKwh: null,
+  isRegisteredSenior: false,
   periodStart: '2024-10-01',
   periodEnd: '2024-10-31',
   lastBillTotal: 3400,

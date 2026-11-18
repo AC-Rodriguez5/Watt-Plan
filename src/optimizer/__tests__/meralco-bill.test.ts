@@ -142,6 +142,10 @@ describe('computeBill', () => {
       expect(bill.vat).toBeCloseTo(plain.vat - plain.senior * 0.12, 9);
     });
 
+    it('does not discount at 101 kWh and keeps the configured subsidy line', () => {
+      expect(computeBill(101, MERALCO_RATES, { isRegisteredSenior: true }).senior).toBeCloseTo(101 * MERALCO_RATES.seniorSubsidy, 9);
+    });
+
     it('charges the subsidy, not the discount, above 100 kWh or when not registered', () => {
       expect(computeBill(101, MERALCO_RATES, { isRegisteredSenior: true }).senior).toBeCloseTo(101 * 0.0001, 9);
       expect(computeBill(100).senior).toBeCloseTo(100 * 0.0001, 9);
