@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -16,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { effectiveRatePerKwh } from '@/optimizer/pricing';
 import { estimateAppliance } from '@/optimizer/optimizer';
 import { useAppStore } from '@/store/app-store';
@@ -48,11 +47,17 @@ const SEGMENT_ICONS: Record<'add' | 'edit', Record<ApplianceCategory, AndroidSym
   edit: { essential: 'emergency', flexible: 'tune', luxury: 'hotel_class' },
 };
 
-/** Selected-segment colors on the edit sheet. The add sheet uses one dark fill for all three. */
+/** Selected-segment colors on the edit sheet. The add sheet uses one dark fill for all three. Getters follow the theme. */
 const EDIT_SEGMENT_TONES: Record<ApplianceCategory, { background: string; text: string }> = {
-  essential: { background: colors.surfaceContainerHighest, text: colors.onSurface },
-  flexible: { background: colors.secondaryContainer, text: colors.onSecondaryContainer },
-  luxury: { background: colors.alertContainer, text: colors.onAlertContainer },
+  get essential() {
+    return { background: colors.surfaceContainerHighest, text: colors.onSurface };
+  },
+  get flexible() {
+    return { background: colors.secondaryContainer, text: colors.onSecondaryContainer };
+  },
+  get luxury() {
+    return { background: colors.alertContainer, text: colors.onAlertContainer };
+  },
 };
 
 const CATEGORY_DESCRIPTIONS: Record<ApplianceCategory, { label: string; text: string; icon: AndroidSymbol }> = {
@@ -629,7 +634,7 @@ function Hint({ text, icon, tone }: { text: string; icon?: AndroidSymbol; tone?:
 // Styles
 // ---------------------------------------------------------------------------
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: {
     flex: 1,
     backgroundColor: colors.surfaceContainerLowest,
@@ -1136,4 +1141,4 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.onPrimary,
   },
-});
+}));

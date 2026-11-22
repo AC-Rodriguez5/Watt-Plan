@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatRate } from '@/utils/format';
 
 type PlanRateCardProps = {
@@ -34,7 +34,7 @@ export function PlanRateCard({ ratePerKwh, source, onEdit }: PlanRateCardProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -82,4 +82,4 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.primary,
   },
-});
+}));

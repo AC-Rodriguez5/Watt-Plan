@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { chargeShare, chargesMatchTotal, sumCharges } from '@/optimizer/bill-calibration';
 import { amountOrNull, tidyAmount, type BillFormErrors, type BillFormValues } from '@/utils/bill-form';
 import { formatPesoExact } from '@/utils/format';
@@ -125,7 +125,7 @@ function ChargeInput({ label, value, share, error, onChangeText }: ChargeInputPr
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     overflow: 'hidden',
     borderRadius: radii.xl,
@@ -261,4 +261,4 @@ const styles = StyleSheet.create({
   verifyMismatch: {
     color: colors.alert,
   },
-});
+}));

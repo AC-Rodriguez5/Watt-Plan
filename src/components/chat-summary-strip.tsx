@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { Plan } from '@/types/energy';
 import { formatPeso } from '@/utils/format';
 
@@ -34,7 +34,7 @@ export function ChatSummaryStrip({ plan }: { plan: Plan }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   wrapper: {
     paddingHorizontal: spacing.gutter,
     paddingVertical: spacing.xs,
@@ -76,4 +76,4 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.inter.semiBold,
     letterSpacing: 0.6,
   },
-});
+}));

@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { PlanMode } from '@/types/energy';
 
 const OPTIONS: { mode: PlanMode; label: string; icon: 'check_circle' | 'bedtime' }[] = [
@@ -36,7 +36,7 @@ export function StrategyToggle({ value, onChange }: StrategyToggleProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   track: {
     flexDirection: 'row',
     padding: spacing.xs,
@@ -63,4 +63,4 @@ const styles = StyleSheet.create({
   labelSelected: {
     color: colors.onSurface,
   },
-});
+}));

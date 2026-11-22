@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BillInputCard } from '@/components/bill-input-card';
 import { Icon } from '@/components/icon';
-import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { useAppStore } from '@/store/app-store';
 import { tidyAmount } from '@/utils/bill-form';
 import { formatAmount } from '@/utils/format';
@@ -76,7 +76,7 @@ export function TargetSheet() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   root: {
     flex: 1,
     backgroundColor: colors.surfaceContainerLowest,
@@ -141,4 +141,4 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.onPrimary,
   },
-});
+}));

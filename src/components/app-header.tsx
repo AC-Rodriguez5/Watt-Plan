@@ -1,12 +1,15 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 
-/** Top app bar shared by the tab screens. `title` is the tab's name, so the bar says where you are. */
-export function AppHeader({ title }: { title: string }) {
+/**
+ * Top app bar shared by the tab screens. `title` is the tab's name, so the bar says where you are.
+ * `onMenu` adds a ⋮ button (Home uses it for the Display sheet).
+ */
+export function AppHeader({ title, onMenu }: { title: string; onMenu?: () => void }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -26,6 +29,15 @@ export function AppHeader({ title }: { title: string }) {
             style={styles.iconButton}>
             <Icon name="tune" size={24} color={colors.onSurfaceVariant} />
           </Pressable>
+          {onMenu && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Display options"
+              onPress={onMenu}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.iconButtonPressed]}>
+              <Icon name="more_vert" size={24} color={colors.onSurfaceVariant} />
+            </Pressable>
+          )}
           <View style={styles.avatar}>
             <Icon name="person" size={18} color={colors.onPrimary} />
           </View>
@@ -35,7 +47,7 @@ export function AppHeader({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   container: {
     backgroundColor: colors.surface,
     boxShadow: shadows.appBar,
@@ -69,6 +81,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radii.full,
   },
+  iconButtonPressed: {
+    backgroundColor: colors.surfaceContainerHigh,
+  },
   avatar: {
     width: 32,
     height: 32,
@@ -77,4 +92,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

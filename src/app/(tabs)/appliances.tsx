@@ -1,12 +1,12 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { ApplianceCard } from '@/components/appliance-card';
 import { AppliancesEmptyState } from '@/components/appliances-empty-state';
 import { Icon } from '@/components/icon';
-import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { effectiveRatePerKwh } from '@/optimizer/pricing';
 import { applianceListItems } from '@/optimizer/appliance-list';
 import { oneHourTip } from '@/optimizer/home-summary';
@@ -173,7 +173,7 @@ export default function AppliancesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -347,4 +347,4 @@ const styles = StyleSheet.create({
   fabPressed: {
     backgroundColor: colors.primary,
   },
-});
+}));

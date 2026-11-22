@@ -1,8 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { SawtoothEdge } from '@/components/receipt';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { PlanStatus } from '@/types/energy';
 import { formatPeso, formatPesoCut } from '@/utils/format';
 
@@ -23,10 +23,12 @@ export type ChatReceiptProps = {
 
 type Variant = 'current' | 'earlier';
 
-const STAMP: Record<PlanStatus, { label: string; icon: 'verified' | 'warning'; background: string; color: string }> = {
-  feasible: { label: 'TARGET MET', icon: 'verified', background: colors.tertiaryFixed, color: colors.onTertiaryFixed },
-  'not-reachable': { label: 'OVER TARGET', icon: 'warning', background: colors.errorContainer, color: colors.onErrorContainer },
-};
+/** The stamp for a status. A function, so its colors follow the theme. */
+function stampFor(status: PlanStatus): { label: string; icon: 'verified' | 'warning'; background: string; color: string } {
+  return status === 'feasible'
+    ? { label: 'TARGET MET', icon: 'verified', background: colors.tertiaryFixed, color: colors.onTertiaryFixed }
+    : { label: 'OVER TARGET', icon: 'warning', background: colors.errorContainer, color: colors.onErrorContainer };
+}
 
 const DOTS = '. '.repeat(60);
 
@@ -36,7 +38,7 @@ export function ChatReceipt(props: ChatReceiptProps & { variant: Variant }) {
 }
 
 function CurrentReceipt({ title, subtitle, lines, kept, status, projectedBill, margin }: ChatReceiptProps) {
-  const stamp = STAMP[status];
+  const stamp = stampFor(status);
   const onTarget = margin >= 0;
   return (
     <View>
@@ -130,7 +132,7 @@ function EarlierReceipt({ title, revisionNumber, lines, projectedBill }: ChatRec
 const MONO_MEDIUM = fontFamilies.mono.medium;
 const MONO_BOLD = fontFamilies.mono.bold;
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -306,4 +308,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.onSurface,
   },
-});
+}));

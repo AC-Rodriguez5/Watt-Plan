@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
-import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 
 /** How long a Snackbar stays before it dismisses itself. */
 export const SNACKBAR_DURATION_MS = 6000;
@@ -39,7 +39,7 @@ export function Snackbar({ message, actionLabel, onAction, onDismiss }: Snackbar
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   anchor: {
     position: 'absolute',
     left: 0,
@@ -83,4 +83,4 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.inversePrimary,
   },
-});
+}));

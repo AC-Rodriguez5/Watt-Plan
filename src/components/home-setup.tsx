@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Polygon, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatKwh, formatPeso } from '@/utils/format';
 
 const HERO_PHOTO = require('../../assets/images/home-hero.jpg');
@@ -46,9 +46,9 @@ export function HomeSetup({ target, dailyKwh, hasAppliances, estimatedBill, pred
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" preserveAspectRatio="none">
           <Defs>
             <LinearGradient id="heroShade" x1="0" y1="1" x2="0" y2="0">
-              <Stop offset="0" stopColor={colors.onSurface} stopOpacity={0.85} />
-              <Stop offset="0.5" stopColor={colors.onSurface} stopOpacity={0.3} />
-              <Stop offset="1" stopColor={colors.onSurface} stopOpacity={0} />
+              <Stop offset="0" stopColor={colors.scrim} stopOpacity={0.85} />
+              <Stop offset="0.5" stopColor={colors.scrim} stopOpacity={0.3} />
+              <Stop offset="1" stopColor={colors.scrim} stopOpacity={0} />
             </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" fill="url(#heroShade)" />
@@ -196,7 +196,7 @@ function LedgerRow({ label, value, valueStyle }: { label: string; value: string;
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   stack: {
     gap: spacing.md,
   },
@@ -238,9 +238,10 @@ const styles = StyleSheet.create({
   heroText: {
     padding: spacing.md,
   },
+  // Over the photo: white text on a dark shade in both themes.
   heroTitle: {
     ...typography.titleMd,
-    color: colors.surfaceContainerLowest,
+    color: colors.onScrim,
   },
 
   stepCard: {
@@ -440,4 +441,4 @@ const styles = StyleSheet.create({
     ...typography.labelSm,
     color: colors.outline,
   },
-});
+}));

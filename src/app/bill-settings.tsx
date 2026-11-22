@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BillBreakdown } from '@/components/bill-breakdown';
 import { BillCalibrationCard } from '@/components/bill-calibration-card';
 import { BillInputCard } from '@/components/bill-input-card';
 import { Icon } from '@/components/icon';
-import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { MERALCO_RATES } from '@/config/meralco-rates';
 import { calibrate } from '@/optimizer/bill-calibration';
 import { useAppStore } from '@/store/app-store';
@@ -205,7 +205,7 @@ export default function BillSettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -366,4 +366,4 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.error,
   },
-});
+}));
