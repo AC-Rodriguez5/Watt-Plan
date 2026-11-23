@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { CategoryChip } from '@/components/category-chip';
 import { Icon } from '@/components/icon';
-import { categoryColors, colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { categoryColors, colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { Appliance } from '@/types/energy';
 import { applianceIcon } from '@/utils/appliance-icon';
 import { formatPercent, formatPeso } from '@/utils/format';
@@ -77,7 +77,7 @@ export function ApplianceCard({ appliance, monthlyCost, shareOfBill, onPress }: 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     backgroundColor: colors.surfaceContainerLowest,
     borderRadius: radii.lg,
@@ -179,4 +179,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

@@ -1,29 +1,39 @@
+import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { HomeDashboard } from '@/components/home-dashboard';
+import { BreakdownDashboard, JourneyDashboard } from '@/components/home-layouts';
 import { HomeSetup } from '@/components/home-setup';
-import { colors, maxContentWidth, spacing } from '@/constants/theme';
+import { colors, maxContentWidth, spacing, themedStyles } from '@/constants/theme';
 import { averageDailyKwh, isHomeSetUp, summarizeHome } from '@/optimizer/home-summary';
 import { useAppStore } from '@/store/app-store';
+import { usePreferences } from '@/store/preferences';
 
 export default function HomeScreen() {
   const appliances = useAppStore((state) => state.appliances);
   const billSettings = useAppStore((state) => state.billSettings);
   const target = useAppStore((state) => state.target);
   const baseline = useAppStore((state) => state.baseline);
+  const homeLayout = usePreferences((state) => state.homeLayout);
 
   const isSetUp = isHomeSetUp(appliances, billSettings);
   const summary = useMemo(() => (isSetUp ? summarizeHome(baseline, target) : null), [isSetUp, baseline, target]);
 
   return (
     <View style={styles.screen}>
-      <AppHeader title="Home" />
+      <AppHeader title="Home" onMenu={() => router.push('/display-settings')} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           {summary ? (
-            <HomeDashboard summary={summary} bill={billSettings} />
+            homeLayout === 'breakdown' ? (
+              <BreakdownDashboard summary={summary} bill={billSettings} />
+            ) : homeLayout === 'journey' ? (
+              <JourneyDashboard summary={summary} bill={billSettings} />
+            ) : (
+              <HomeDashboard summary={summary} bill={billSettings} />
+            )
           ) : (
             <HomeSetup
               target={target}
@@ -39,7 +49,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -53,4 +63,4 @@ const styles = StyleSheet.create({
     maxWidth: maxContentWidth - spacing.margin * 2,
     alignSelf: 'center',
   },
-});
+}));

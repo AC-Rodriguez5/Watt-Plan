@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { CategoryChip } from '@/components/category-chip';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { PlanApplianceRow } from '@/optimizer/plan-appliances';
 import { formatHours, formatPeso, formatPesoCut } from '@/utils/format';
 
@@ -50,7 +50,7 @@ function PlanApplianceRowView({ row, first }: { row: PlanApplianceRow; first: bo
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   // The shadow sits on the card; the clip keeps the tinted rows inside its rounded corners.
   card: {
     borderRadius: radii.lg,
@@ -125,4 +125,4 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.mono.bold,
     color: colors.onSurface,
   },
-});
+}));

@@ -40,7 +40,41 @@ export type HomeSummary = {
   /** Top three appliances by monthly cost, costliest first. */
   topCosts: CostlyAppliance[];
   applianceCount: number;
+  /** The bill split for the "Where it goes" ring: the costliest appliances, then the rest. Shares add up to 1. */
+  slices: BillSlice[];
+  /**
+   * How close the bill is to the target, 0 to 1, for the "Bill journey" track: target / estimate, and 1
+   * once at or under the target. Cutting moves it toward 1. 0 when there is no target.
+   */
+  targetProgress: number;
 };
+
+export type BillSlice = {
+  /** Appliance name, or "Others" for everything after the costliest ones. */
+  label: string;
+  /** Null for "Others". */
+  applianceId: string | null;
+  /** Pesos per month. */
+  cost: number;
+  /** Share of the estimated bill, 0 to 1. */
+  share: number;
+};
+
+/** Slices for the ring: every appliance when there are three or fewer, else the top two and "Others". */
+function billSlices(items: Baseline['items'], total: number): BillSlice[] {
+  if (!(total > 0)) return [];
+  const ranked = [...items].filter(({ cost }) => cost > 0).sort((a, b) => b.cost - a.cost);
+  const named = ranked.length <= 3 ? ranked : ranked.slice(0, 2);
+  const slices: BillSlice[] = named.map(({ appliance, cost }) => ({
+    label: appliance.name,
+    applianceId: appliance.id,
+    cost,
+    share: cost / total,
+  }));
+  const rest = ranked.slice(named.length).reduce((sum, { cost }) => sum + cost, 0);
+  if (rest > 0) slices.push({ label: 'Others', applianceId: null, cost: rest, share: rest / total });
+  return slices;
+}
 
 /**
  * Home tab figures, taken from the optimizer's baseline (calibrated to the last bill) so Home and
@@ -76,6 +110,8 @@ export function summarizeHome(baseline: Baseline, target: number | null): HomeSu
     isOverTarget: excess > 0,
     topCosts,
     applianceCount: items.length,
+    slices: billSlices(items, estimatedBill),
+    targetProgress: !hasTarget ? 0 : estimatedBill <= target ? 1 : target / estimatedBill,
   };
 }
 

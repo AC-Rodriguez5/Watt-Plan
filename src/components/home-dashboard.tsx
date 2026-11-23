@@ -1,11 +1,11 @@
 import { router } from 'expo-router';
 import type { AndroidSymbol } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Pressable, Text, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { Icon } from '@/components/icon';
-import { categoryColors, colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { categoryColors, colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { CostlyAppliance, HomeSummary } from '@/optimizer/home-summary';
 import type { BillSettings } from '@/types/energy';
 import { applianceIcon } from '@/utils/appliance-icon';
@@ -120,7 +120,7 @@ const PULSE_PAUSE_MS = 500;
  * through the filled part, like current along a wire. The pulse stops when the phone asks for
  * reduced motion.
  */
-function EnergyTrack({ goalFlex, excessFlex, emptyFlex }: { goalFlex: number; excessFlex: number; emptyFlex: number }) {
+export function EnergyTrack({ goalFlex, excessFlex, emptyFlex }: { goalFlex: number; excessFlex: number; emptyFlex: number }) {
   const [width, setWidth] = useState(0);
   const [progress] = useState(() => new Animated.Value(0));
   const fillFlex = goalFlex + excessFlex;
@@ -260,7 +260,7 @@ function SpenderRow({ item, first }: { item: CostlyAppliance; first: boolean }) 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   // Groups sit 24 apart; items inside a group 8 to 12.
   stack: {
     gap: spacing.lg,
@@ -540,4 +540,4 @@ const styles = StyleSheet.create({
     ...typography.receiptLabel,
     color: colors.onSurfaceVariant,
   },
-});
+}));

@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, spacing } from '@/constants/theme';
+import { colors, fontFamilies, radii, spacing, themedStyles } from '@/constants/theme';
 
 type MissingBillBannerProps = {
   /** Opens Bill settings. */
@@ -28,7 +28,7 @@ export function MissingBillBanner({ onEnterBill }: MissingBillBannerProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -71,4 +71,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.alertAction,
   },
-});
+}));

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import { Text, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { Line, Polygon } from 'react-native-svg';
 
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { PlanStatus } from '@/types/energy';
 import { formatKwh, formatPeso, formatPesoExact } from '@/utils/format';
 
@@ -19,10 +19,12 @@ export type ReceiptProps = {
   seniorDiscount?: number | null;
 };
 
-const STAMP: Record<PlanStatus, { label: string; color: string }> = {
-  feasible: { label: 'TARGET FEASIBLE', color: colors.tertiary },
-  'not-reachable': { label: 'TARGET NOT REACHABLE', color: colors.error },
-};
+/** The stamp for a status. A function, so its color follows the theme. */
+function stampFor(status: PlanStatus): { label: string; color: string } {
+  return status === 'feasible'
+    ? { label: 'TARGET FEASIBLE', color: colors.tertiary }
+    : { label: 'TARGET NOT REACHABLE', color: colors.error };
+}
 
 const TOOTH_WIDTH = 6;
 const TOOTH_DEPTH = 4;
@@ -31,7 +33,7 @@ const LEADER = '. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 
 
 /** Compact plan receipt: the target, the raw estimate, any senior discount, the projected bill and whether the target is met. */
 export function Receipt({ status, projectedBill, currentEstimate, currentKwh, target, seniorDiscount = null }: ReceiptProps) {
-  const stamp = STAMP[status];
+  const stamp = stampFor(status);
   return (
     <View style={styles.wrapper}>
       <View style={styles.paper}>
@@ -124,7 +126,7 @@ export function SawtoothEdge({ color = colors.surfaceContainerLowest }: { color?
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   wrapper: {
     width: '100%',
     maxWidth: 340,
@@ -217,4 +219,4 @@ const styles = StyleSheet.create({
     ...typography.receiptNumericLg,
     color: colors.primary,
   },
-});
+}));

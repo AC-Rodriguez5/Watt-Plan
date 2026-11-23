@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatPeso } from '@/utils/format';
 
 type PlanEssentialsCardProps = {
@@ -24,7 +24,7 @@ export function PlanEssentialsCard({ lowestBill }: PlanEssentialsCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -57,4 +57,4 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.onSurfaceVariant,
   },
-});
+}));

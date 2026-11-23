@@ -1,7 +1,7 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, radii, spacing } from '@/constants/theme';
+import { colors, radii, spacing, themedStyles } from '@/constants/theme';
 
 /** Right side of the Bill settings header: overflow icon and the profile avatar, as drawn in the design. */
 export function BillHeaderActions() {
@@ -17,7 +17,7 @@ export function BillHeaderActions() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -37,4 +37,4 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     backgroundColor: colors.primary,
   },
-});
+}));

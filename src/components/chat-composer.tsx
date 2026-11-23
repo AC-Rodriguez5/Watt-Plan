@@ -1,8 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import type { AndroidSymbol } from 'expo-symbols';
 
 import { Icon } from '@/components/icon';
-import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { AssistantStatus } from '@/types/chat';
 
 const SUGGESTIONS: { label: string; icon: AndroidSymbol }[] = [
@@ -76,7 +76,7 @@ export function ChatComposer({ value, onChangeText, onSend, status = 'ready', bo
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   container: {
     width: '100%',
     maxWidth: maxContentWidth,
@@ -155,4 +155,4 @@ const styles = StyleSheet.create({
   sendPressed: {
     backgroundColor: colors.primary,
   },
-});
+}));

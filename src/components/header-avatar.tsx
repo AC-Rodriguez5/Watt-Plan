@@ -1,7 +1,7 @@
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, radii } from '@/constants/theme';
+import { colors, radii, themedStyles } from '@/constants/theme';
 
 /** Profile avatar at the right of a pushed screen's header, as drawn in the design. */
 export function HeaderAvatar() {
@@ -12,7 +12,7 @@ export function HeaderAvatar() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   avatar: {
     width: 32,
     height: 32,
@@ -21,4 +21,4 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
     backgroundColor: colors.primary,
   },
-});
+}));

@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
 import { DashedRule } from '@/components/receipt';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatPeso, formatRate } from '@/utils/format';
 
 type PlanTargetAlertCardProps = {
@@ -65,7 +65,7 @@ export function PlanTargetAlertCard({ target, ratePerKwh, rateSource, onEditTarg
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     gap: spacing.sm,
     padding: spacing.md,
@@ -156,4 +156,4 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.inter.semiBold,
     color: colors.primary,
   },
-});
+}));

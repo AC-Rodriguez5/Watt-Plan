@@ -1,14 +1,14 @@
 import { router } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useRef, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AssistantThinking, AssistantUnavailable } from '@/components/chat-assistant-status';
 import { ChatComposer } from '@/components/chat-composer';
 import { ChatMessageView } from '@/components/chat-message';
 import { ChatSummaryStrip } from '@/components/chat-summary-strip';
-import { colors, maxContentWidth, radii, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, spacing, typography, themedStyles } from '@/constants/theme';
 import { useAppStore } from '@/store/app-store';
 import { formatClock } from '@/utils/format';
 
@@ -93,7 +93,7 @@ export default function PlanChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -124,4 +124,4 @@ const styles = StyleSheet.create({
     ...typography.labelSm,
     color: colors.onSurfaceVariant,
   },
-});
+}));

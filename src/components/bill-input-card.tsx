@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 
 type BillInputCardProps = {
   label: string;
@@ -76,7 +76,7 @@ export function BillInputCard({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     padding: spacing.md,
     borderRadius: radii.lg,
@@ -130,4 +130,4 @@ const styles = StyleSheet.create({
     marginTop: 6,
     color: colors.error,
   },
-});
+}));

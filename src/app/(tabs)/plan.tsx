@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppHeader } from '@/components/app-header';
 import { Icon } from '@/components/icon';
@@ -14,7 +14,7 @@ import { PlanTargetCard } from '@/components/plan-target-card';
 import { Receipt } from '@/components/receipt';
 import { Snackbar } from '@/components/snackbar';
 import { StrategyToggle } from '@/components/strategy-toggle';
-import { colors, maxContentWidth, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, maxContentWidth, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { calibrate } from '@/optimizer/bill-calibration';
 import { planApplianceRows } from '@/optimizer/plan-appliances';
 import { lowestReachableTarget } from '@/optimizer/plan-revision';
@@ -155,7 +155,7 @@ export default function PlanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   screen: {
     flex: 1,
     backgroundColor: colors.background,
@@ -236,4 +236,4 @@ const styles = StyleSheet.create({
     ...typography.labelMd,
     color: colors.onSurface,
   },
-});
+}));

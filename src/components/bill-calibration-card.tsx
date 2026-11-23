@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { Calibration, MatchQuality } from '@/optimizer/bill-calibration';
 import { formatKwh, formatPesoExact } from '@/utils/format';
 
@@ -109,7 +109,7 @@ function LedgerRow({ icon, iconColor, label, value, valueStyle }: LedgerRowProps
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     padding: spacing.md,
     gap: spacing.md,
@@ -255,4 +255,4 @@ const styles = StyleSheet.create({
     ...typography.labelSm,
     color: colors.onSurfaceVariant,
   },
-});
+}));

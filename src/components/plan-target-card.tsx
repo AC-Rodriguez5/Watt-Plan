@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatPeso } from '@/utils/format';
 
 type PlanTargetCardProps = {
@@ -32,7 +32,7 @@ export function PlanTargetCard({ target, onEdit }: PlanTargetCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     gap: spacing.sm,
     padding: spacing.md,
@@ -71,4 +71,4 @@ const styles = StyleSheet.create({
     ...typography.bodyMd,
     color: colors.onSurfaceVariant,
   },
-});
+}));

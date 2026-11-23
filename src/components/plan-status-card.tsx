@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatWhole } from '@/utils/format';
 
 type PlanStatusCardProps = {
@@ -29,7 +29,7 @@ export function PlanStatusCard({ kwhSaved, co2SavedKg }: PlanStatusCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -64,4 +64,4 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.inter.semiBold,
     color: colors.onSurface,
   },
-});
+}));

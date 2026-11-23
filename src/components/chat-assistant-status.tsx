@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import { formatClock } from '@/utils/format';
 
 /** Loops a 0 to 1 value forever, starting `delay` ms in. */
@@ -127,7 +127,7 @@ export function AssistantUnavailable({ sentAt, onRetry, onGoToAppliances }: Assi
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   assistant: {
     alignSelf: 'flex-start',
     width: '94%',
@@ -304,4 +304,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     color: colors.outline,
   },
-});
+}));

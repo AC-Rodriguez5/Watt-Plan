@@ -1,7 +1,7 @@
-import { StyleSheet, Text } from 'react-native';
+import { Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { colors, spacing, typography } from '@/constants/theme';
+import { colors, spacing, typography, themedStyles } from '@/constants/theme';
 
 type PlaceholderScreenProps = {
   title: string;
@@ -18,7 +18,7 @@ export function PlaceholderScreen({ title, topInset = false }: PlaceholderScreen
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -28,4 +28,4 @@ const styles = StyleSheet.create({
     ...typography.headlineMd,
     color: colors.onSurface,
   },
-});
+}));

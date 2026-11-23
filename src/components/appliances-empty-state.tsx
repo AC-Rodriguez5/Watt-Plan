@@ -1,7 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { Icon } from '@/components/icon';
-import { colors, fontFamilies, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, fontFamilies, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { AppliancePresetKey } from '@/utils/appliance-presets';
 import { formatPeso } from '@/utils/format';
 
@@ -86,7 +86,7 @@ export function AppliancesEmptyState({ ratePerKwh, onAdd }: AppliancesEmptyState
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   // Estimated monthly load card
   ribbonWrap: {
     paddingHorizontal: spacing.margin,
@@ -246,4 +246,4 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.onSurfaceVariant,
   },
-});
+}));

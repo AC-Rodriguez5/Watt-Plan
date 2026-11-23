@@ -1,18 +1,18 @@
 /**
  * Watt Plan theme: the single source for colors, typography, spacing and corner radii.
  * Values come from design/DESIGN.md (token front matter) and design/html (what the
- * screens actually render). Light mode only.
+ * screens actually render). Light by default; dark mode is a choice in Home's ⋮ menu.
  */
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 
 // ---------------------------------------------------------------------------
 // Colors
 // ---------------------------------------------------------------------------
 
-export const colors = {
+const lightColors = {
   // Surfaces
   background: '#faf8ff',
   surface: '#faf8ff',
@@ -86,35 +86,168 @@ export const colors = {
 
   // Switched off (plan list rows cut to 0 hours a day)
   switchedOff: '#facc15',
-} as const;
 
-export type ColorToken = keyof typeof colors;
+  // Over photos and other fixed-dark backdrops: the same in both themes.
+  scrim: '#000000',
+  onScrim: '#ffffff',
+};
 
-/** Appliance category styling, as drawn on the appliance cards (design/screens/appliances.png). */
-export const categoryColors = {
-  essential: {
-    chipBackground: colors.surfaceContainer,
-    chipText: colors.onSurfaceVariant,
-    iconBackground: colors.surfaceContainerHigh,
-    iconTint: colors.onSurfaceVariant,
-    barColor: colors.secondary,
+/** Every color role. All values are 6-digit hex, so code can append a 2-digit alpha (`${colors.x}66`). */
+export type Palette = { [K in keyof typeof lightColors]: string };
+export type ColorToken = keyof Palette;
+
+/**
+ * The same roles for dark mode, following Material 3's dark scheme for this seed. Light tones become
+ * the text and accent colors and dark tones the surfaces. Filled buttons turn light blue with dark
+ * text, which is why `primaryContainer` is light here and `onPrimary` dark. The "fixed" roles keep
+ * their light values, as in Material 3.
+ */
+const darkColors: Palette = {
+  background: '#111318',
+  surface: '#111318',
+  surfaceDim: '#111318',
+  surfaceContainerLowest: '#1b1d25',
+  surfaceContainerLow: '#20232c',
+  surfaceContainer: '#262933',
+  surfaceContainerHigh: '#2f323d',
+  surfaceContainerHighest: '#393c48',
+  surfaceVariant: '#424654',
+  inverseSurface: '#e1e2ec',
+  inverseOnSurface: '#2e3038',
+
+  onBackground: '#e1e2ec',
+  onSurface: '#e1e2ec',
+  onSurfaceVariant: '#c2c6d7',
+
+  outline: '#8c90a1',
+  outlineVariant: '#424654',
+
+  primary: '#b0c6ff',
+  onPrimary: '#002d6e',
+  primaryContainer: '#8fb2ff',
+  onPrimaryContainer: '#001b45',
+  primaryFixed: '#d9e2ff',
+  primaryFixedDim: '#b0c6ff',
+  onPrimaryFixed: '#001944',
+  onPrimaryFixedVariant: '#00429a',
+  inversePrimary: '#0058ca',
+  surfaceTint: '#b0c6ff',
+
+  secondary: '#a7c8fa',
+  onSecondary: '#04305a',
+  secondaryContainer: '#2b4c76',
+  onSecondaryContainer: '#d3e4ff',
+  secondaryFixed: '#d3e4ff',
+  secondaryFixedDim: '#a5c9fb',
+  onSecondaryFixed: '#001c38',
+  onSecondaryFixedVariant: '#214873',
+
+  tertiary: '#6fdd8b',
+  onTertiary: '#003916',
+  tertiaryContainer: '#007b34',
+  onTertiaryContainer: '#aaffb3',
+  tertiaryFixed: '#7ffc97',
+  tertiaryFixedDim: '#62df7d',
+  onTertiaryFixed: '#002109',
+  onTertiaryFixedVariant: '#005320',
+
+  error: '#ffb4ab',
+  onError: '#690005',
+  errorContainer: '#93000a',
+  onErrorContainer: '#ffdad6',
+
+  alert: '#fb923c',
+  alertContainer: '#3a1f0e',
+  alertBorder: '#7c3a12',
+  alertContainerPressed: '#4a2812',
+  onAlertContainer: '#fed7aa',
+  alertAction: '#fdba74',
+
+  switchedOff: '#facc15',
+
+  scrim: '#000000',
+  onScrim: '#ffffff',
+};
+
+export type ColorScheme = 'light' | 'dark';
+
+const PALETTES: Record<ColorScheme, Palette> = { light: lightColors, dark: darkColors };
+
+let activeScheme: ColorScheme = 'light';
+
+/**
+ * Picks the palette that `colors` and `themedStyles` read. The root layout calls it with the saved
+ * choice before it renders, and remounts the app when the choice changes so every screen redraws.
+ */
+export function setColorScheme(scheme: ColorScheme): void {
+  activeScheme = scheme;
+}
+
+export function getColorScheme(): ColorScheme {
+  return activeScheme;
+}
+
+/**
+ * The active palette. Read it while rendering or inside `themedStyles`. Never copy a value into a
+ * module-level constant: that runs once at startup and would stay light in dark mode.
+ */
+export const colors: Palette = new Proxy({} as Palette, {
+  get: (_, key) => PALETTES[activeScheme][key as ColorToken],
+});
+
+/**
+ * `StyleSheet.create` for styles that use `colors`. The factory runs once per theme, on first use,
+ * so `themedStyles(() => ({ ... }))` reads the palette that is active when the screen draws.
+ */
+export function themedStyles<S extends StyleInput>(factory: () => S & StyleInput): Readonly<S> {
+  const sheets: Partial<Record<ColorScheme, Readonly<S>>> = {};
+  return new Proxy({} as Readonly<S>, {
+    get: (_, key) => (sheets[activeScheme] ??= StyleSheet.create(factory()))[key as keyof S],
+  });
+}
+
+/** What `StyleSheet.create` accepts. */
+type StyleInput = Parameters<typeof StyleSheet.create>[0];
+
+type CategoryPalette = {
+  chipBackground: string;
+  chipText: string;
+  iconBackground: string;
+  iconTint: string;
+  barColor: string;
+};
+
+/** Appliance category styling, as drawn on the appliance cards. Getters, so they follow the theme. */
+export const categoryColors: Record<'essential' | 'flexible' | 'luxury', CategoryPalette> = {
+  get essential() {
+    return {
+      chipBackground: colors.surfaceContainer,
+      chipText: colors.onSurfaceVariant,
+      iconBackground: colors.surfaceContainerHigh,
+      iconTint: colors.onSurfaceVariant,
+      barColor: colors.secondary,
+    };
   },
-  flexible: {
-    chipBackground: colors.secondaryContainer,
-    chipText: colors.onSecondaryContainer,
-    iconBackground: `${colors.secondaryContainer}66`,
-    iconTint: colors.primary,
-    barColor: colors.primaryContainer,
+  get flexible() {
+    return {
+      chipBackground: colors.secondaryContainer,
+      chipText: colors.onSecondaryContainer,
+      iconBackground: `${colors.secondaryContainer}66`,
+      iconTint: colors.primary,
+      barColor: colors.primaryContainer,
+    };
   },
   // High-load orange, not red: red is kept for over budget and delete.
-  luxury: {
-    chipBackground: colors.alertContainer,
-    chipText: colors.alertAction,
-    iconBackground: colors.alertContainer,
-    iconTint: colors.alert,
-    barColor: colors.alert,
+  get luxury() {
+    return {
+      chipBackground: colors.alertContainer,
+      chipText: colors.alertAction,
+      iconBackground: colors.alertContainer,
+      iconTint: colors.alert,
+      barColor: colors.alert,
+    };
   },
-} as const;
+};
 
 /**
  * What each signal color means, everywhere in the app:

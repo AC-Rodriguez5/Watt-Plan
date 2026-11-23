@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { ChatReceipt } from '@/components/chat-receipt';
 import { Icon } from '@/components/icon';
-import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography, themedStyles } from '@/constants/theme';
 import type { ChatMessage } from '@/types/chat';
 import type { Appliance } from '@/types/energy';
 import { toChatReceiptProps } from '@/utils/chat-receipt';
@@ -113,7 +113,7 @@ function UserMessage({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyles(() => ({
   // User
   user: {
     alignSelf: 'flex-end',
@@ -235,4 +235,4 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     color: colors.onSurfaceVariant,
   },
-});
+}));
